@@ -1,0 +1,2142 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ランニングイベント手帳</title>
+<style>
+/* =====================================================================
+   デザイントークン（見た目を変えるときは、まずここだけを編集します）
+   ダークモードを足すときは、下の :root[data-theme="dark"] に同じ変数を上書きしてください
+   ===================================================================== */
+:root {
+  /* 色 */
+  --color-bg: #f6f7f5;
+  --color-surface: #ffffff;
+  --color-surface-sub: #eef1ec;
+  --color-text: #1f2a24;
+  --color-text-muted: #5b6760;
+  --color-border: #d5dbd2;
+  --color-primary: #1f6f4a;
+  --color-primary-contrast: #ffffff;
+  --color-primary-soft: #e1f0e8;
+  --color-ok: #1f6f4a;
+  --color-warn: #8a5a00;
+  --color-warn-bg: #fff3d6;
+  --color-danger: #a12626;
+  --color-danger-bg: #fde6e4;
+  --color-info-bg: #e6eef8;
+  --color-info: #1d4e89;
+  --color-overlay: rgba(20, 28, 24, 0.45);
+  /* 文字 */
+  --font-base: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-size-xs: 0.75rem;
+  --font-size-s: 0.875rem;
+  --font-size-m: 1rem;
+  --font-size-l: 1.25rem;
+  --font-size-xl: 1.75rem;
+  --font-size-xxl: 2.5rem;
+  --line-height: 1.6;
+  --weight-bold: 700;
+  /* 余白・形 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --radius-s: 8px;
+  --radius-m: 14px;
+  --radius-l: 22px;
+  --shadow-1: 0 1px 3px rgba(20, 28, 24, 0.12);
+  --shadow-2: 0 -4px 24px rgba(20, 28, 24, 0.2);
+  --border-width: 1px;
+  /* サイズ */
+  --tap-size: 48px;
+  --nav-height: 60px;
+  --content-width: 720px;
+}
+/* :root[data-theme="dark"] { --color-bg: #...; ...（あとで追加） } */
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--color-bg); color: var(--color-text);
+  font-family: var(--font-base); font-size: var(--font-size-m); line-height: var(--line-height);
+  padding-bottom: calc(var(--nav-height) + var(--space-5));
+}
+body.modal-open { overflow: hidden; }
+h1, h2, h3, h4 { margin: 0 0 var(--space-2); line-height: 1.35; }
+h2 { font-size: var(--font-size-l); }
+h3 { font-size: var(--font-size-m); margin-top: var(--space-5); }
+h4 { font-size: var(--font-size-m); }
+p { margin: 0 0 var(--space-2); }
+.small { font-size: var(--font-size-s); }
+.xs { font-size: var(--font-size-xs); }
+.muted { color: var(--color-text-muted); }
+.center { text-align: center; }
+.pre { white-space: pre-line; }
+.code { white-space: pre-wrap; overflow-x: auto; background: var(--color-surface-sub); padding: var(--space-3); border-radius: var(--radius-s); font-family: var(--font-mono); font-size: var(--font-size-xs); }
+
+.app { max-width: var(--content-width); margin: 0 auto; padding: var(--space-4); }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
+.topbar h1 { font-size: var(--font-size-l); margin: 0; }
+
+/* ナビ */
+.nav { position: fixed; left: 0; right: 0; bottom: 0; height: var(--nav-height); background: var(--color-surface);
+  border-top: var(--border-width) solid var(--color-border); display: flex; z-index: 10; }
+.nav button { flex: 1; border: 0; background: transparent; color: var(--color-text-muted); font: inherit; font-size: var(--font-size-xs);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: var(--tap-size); cursor: pointer; }
+.nav button .ico { font-size: var(--font-size-l); line-height: 1; }
+.nav button[aria-current="page"] { color: var(--color-primary); font-weight: var(--weight-bold); background: var(--color-primary-soft); }
+
+/* カード */
+.card { background: var(--color-surface); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-m);
+  padding: var(--space-4); margin-bottom: var(--space-3); box-shadow: var(--shadow-1); }
+.card.tap { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; display: block; }
+.card.is-done { background: var(--color-primary-soft); }
+.card.advice h4 { font-size: var(--font-size-s); color: var(--color-text-muted); margin-bottom: var(--space-1); }
+.card.banner { background: var(--color-warn-bg); color: var(--color-warn); border-color: var(--color-warn); font-weight: var(--weight-bold); }
+.card.notice-warn { background: var(--color-warn-bg); color: var(--color-warn); border-color: var(--color-warn); }
+.card.notice-danger { background: var(--color-danger-bg); color: var(--color-danger); border-color: var(--color-danger); }
+.card.notice-info { background: var(--color-info-bg); color: var(--color-info); border-color: var(--color-info); }
+.card ul { margin: 0; padding-left: 1.2em; }
+.card li { margin-bottom: var(--space-1); }
+
+.hero { text-align: center; }
+.hero .count { font-size: var(--font-size-xxl); font-weight: var(--weight-bold); color: var(--color-primary); line-height: 1.2; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); font-size: var(--font-size-s); margin-top: var(--space-3); }
+.kv dt { color: var(--color-text-muted); } .kv dd { margin: 0; }
+
+/* ボタン・フォーム */
+.btn { min-height: var(--tap-size); padding: 0 var(--space-4); border-radius: var(--radius-s); border: var(--border-width) solid var(--color-primary);
+  background: var(--color-surface); color: var(--color-primary); font: inherit; font-weight: var(--weight-bold); cursor: pointer; }
+.btn.primary { background: var(--color-primary); color: var(--color-primary-contrast); }
+.btn.danger { border-color: var(--color-danger); color: var(--color-danger); }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.small { min-height: 40px; font-size: var(--font-size-s); padding: 0 var(--space-3); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .card.tap:focus-visible, .nav button:focus-visible {
+  outline: 3px solid var(--color-info); outline-offset: 2px; }
+.btns { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.btns .grow { flex: 1; }
+label { display: block; font-size: var(--font-size-s); color: var(--color-text-muted); margin-bottom: var(--space-3); }
+label.check { display: flex; align-items: center; gap: var(--space-3); color: var(--color-text); font-size: var(--font-size-m); min-height: var(--tap-size); }
+input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--color-primary); flex: none; }
+input[type="text"], input[type="number"], input[type="date"], input[type="time"], input:not([type]), select, textarea {
+  display: block; width: 100%; min-height: var(--tap-size); margin-top: var(--space-1); padding: var(--space-2) var(--space-3);
+  font: inherit; font-size: 16px; color: var(--color-text); background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border); border-radius: var(--radius-s); }
+textarea { min-height: 80px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.row { display: flex; gap: var(--space-2); align-items: flex-end; }
+.row > :first-child { flex: 1; }
+.row-between { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
+
+/* バッジ・ステータス */
+.badge { display: inline-block; padding: 2px var(--space-3); border-radius: var(--radius-l); font-size: var(--font-size-xs);
+  font-weight: var(--weight-bold); background: var(--color-surface-sub); color: var(--color-text); border: var(--border-width) solid var(--color-border); }
+.badge.t-race { background: var(--color-primary); color: var(--color-primary-contrast); border-color: var(--color-primary); }
+.badge.t-rest { color: var(--color-text-muted); }
+.badge.today { background: var(--color-info-bg); color: var(--color-info); border-color: var(--color-info); }
+.badge.auto { background: var(--color-info-bg); color: var(--color-info); }
+.status { font-weight: var(--weight-bold); font-size: var(--font-size-s); }
+.status.lv-warn { color: var(--color-warn); } .status.lv-over { color: var(--color-danger); } .status.lv-ok { color: var(--color-ok); }
+.progress { height: 12px; background: var(--color-surface-sub); border-radius: var(--radius-l); overflow: hidden; border: var(--border-width) solid var(--color-border); margin: var(--space-2) 0; }
+.progress-fill { display: block; height: 100%; background: var(--color-ok); }
+.progress-fill.lv-warn { background: var(--color-warn); } .progress-fill.lv-over { background: var(--color-danger); }
+
+/* 週表示 */
+.weeknav { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-3); }
+.weeknav .label { text-align: center; font-weight: var(--weight-bold); }
+.day-head { display: flex; align-items: center; justify-content: space-between; margin: var(--space-4) 0 var(--space-2); }
+.day-head .d { font-weight: var(--weight-bold); }
+.wk-line { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: center; }
+.wk-main { font-weight: var(--weight-bold); }
+.wk-sub { color: var(--color-text-muted); font-size: var(--font-size-s); }
+.empty-day { color: var(--color-text-muted); font-size: var(--font-size-s); padding: var(--space-2) 0; }
+
+/* タイムライン・ペース表 */
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline li { display: flex; gap: var(--space-4); align-items: baseline; padding: var(--space-3) 0; border-bottom: var(--border-width) solid var(--color-border); }
+.timeline .time { font-size: var(--font-size-xl); font-weight: var(--weight-bold); min-width: 4.5ch; font-variant-numeric: tabular-nums; }
+.timeline .title { font-size: var(--font-size-l); flex: 1; text-align: left; background: none; border: 0; padding: 0; font-family: inherit; color: inherit; cursor: pointer; }
+.pace-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-s); }
+.pace-table th, .pace-table td { text-align: left; padding: var(--space-2); border-bottom: var(--border-width) solid var(--color-border); vertical-align: top; }
+.pace-table td.num { font-variant-numeric: tabular-nums; font-weight: var(--weight-bold); }
+.mark { display: inline-block; margin: 0 var(--space-1) var(--space-1) 0; padding: 0 var(--space-2); border-radius: var(--radius-s); font-size: var(--font-size-xs); font-weight: var(--weight-bold); }
+.mark.fuel { background: var(--color-warn-bg); color: var(--color-warn); }
+.mark.water { background: var(--color-info-bg); color: var(--color-info); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-2) 0; }
+.chip { padding: var(--space-1) var(--space-3); border-radius: var(--radius-l); background: var(--color-surface-sub); font-size: var(--font-size-s); }
+.pack { display: flex; align-items: center; gap: var(--space-2); border-bottom: var(--border-width) solid var(--color-border); }
+.pack .chk { flex: 1; display: flex; align-items: center; gap: var(--space-3); min-height: var(--tap-size); background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.pack.checked .txt { text-decoration: line-through; color: var(--color-text-muted); }
+
+/* シート（モーダル） */
+.sheet-wrap[hidden] { display: none; }
+.sheet-back { position: fixed; inset: 0; background: var(--color-overlay); z-index: 20; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: 92vh; display: flex; flex-direction: column; z-index: 21;
+  background: var(--color-bg); border-radius: var(--radius-l) var(--radius-l) 0 0; box-shadow: var(--shadow-2); max-width: var(--content-width); margin: 0 auto; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-bottom: var(--border-width) solid var(--color-border); }
+.sheet-head h2 { margin: 0; }
+.sheet-body { overflow-y: auto; padding: var(--space-4); padding-bottom: var(--space-6); -webkit-overflow-scrolling: touch; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav-height) + var(--space-4)); z-index: 30;
+  background: var(--color-text); color: var(--color-bg); padding: var(--space-3) var(--space-4); border-radius: var(--radius-m); max-width: 90vw; font-size: var(--font-size-s); }
+.toast[hidden] { display: none; }
+.wxbox { border: var(--border-width) dashed var(--color-border); border-radius: var(--radius-m); padding: var(--space-3); margin-bottom: var(--space-3); background: var(--color-surface); }
+.placeres button { display: block; width: 100%; text-align: left; margin-top: var(--space-1); }
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: var(--tap-size); }
+.disclaimer { font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: var(--space-4); }
+
+@media (min-width: 720px) {
+  .sheet { bottom: var(--space-5); border-radius: var(--radius-l); }
+}
+
+/* 練習メニュー */
+.card.is-quality { border-left: 4px solid var(--color-primary); }
+.wk-strength { color: var(--color-text-muted); }
+.care-line { font-size: var(--font-size-s); color: var(--color-text-muted); padding: 0 0 var(--space-1); }
+.bd-day { margin-bottom: var(--space-3); }
+details.card > summary { cursor: pointer; font-weight: var(--weight-bold); min-height: var(--tap-size); display: flex; align-items: center; }
+.care-ex { padding: var(--space-2) 0; border-top: var(--border-width) solid var(--color-border); }
+code { font-family: var(--font-mono); font-size: var(--font-size-xs); word-break: break-all; }
+.topbar .btns { display: flex; gap: var(--space-2); margin: 0; }
+
+</style>
+<meta name="theme-color" content="#1f6f4a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ラン手帳">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body>
+<main class="app" id="main"></main>
+<nav class="nav" id="nav" aria-label="メニュー"></nav>
+<div class="sheet-wrap" id="sheet" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script>
+/* =====================================================================
+   ロジック層（画面から独立。DOMには触れない）
+   - CONFIG        : 調整できる設定値・文章データ
+   - Dates/Fmt     : 日付・数値・ペース計算
+   - Plan          : トレーニング計画の自動生成
+   - Advice        : 栄養・水分・ウエアの提案
+   - Shoes         : シューズ集計・判定
+   - Weather       : 天気の取得と変換（設定オン＋同意があるときだけ通信）
+   - Data          : 保存データの検証・書き出し・読み込み
+   ===================================================================== */
+const RE = (function () {
+'use strict';
+
+/* ---------------------------------------------------------------
+   CONFIG：数字や文章はここで変更できます
+   --------------------------------------------------------------- */
+const CONFIG = {
+  dataVersion: 1,
+  storageKey: 'running_event_app_v1',
+  weatherCacheKey: 'running_event_app_weather_cache_v1',
+
+  eventTypes: {
+    full: { label: 'フルマラソン', km: 42.195 },
+    half: { label: 'ハーフマラソン', km: 21.0975 },
+    '10k': { label: '10km', km: 10 },
+    '5k': { label: '5km', km: 5 },
+    fun: { label: 'ファンラン・その他（距離を入力）', km: null }
+  },
+  menuTypes: { jog: 'ジョグ', recovery: 'リカバリー', strides: '流し', tempo: 'ペース走', mp: 'MP', interval: 'インターバル', lsd: 'LSD', rest: '休養', race: '大会' },
+  menu: { version: 1, maxDays: 400, qualityTypes: ['interval', 'tempo', 'mp', 'strides'], recoveryTagRatio: 0.85 },
+  levels: { beginner: '初心者', intermediate: '中級者', advanced: '上級者' },
+  shoeUses: { training: '練習用', speed: 'スピード練習用', race: '大会用', both: '兼用' },
+  shoeStatuses: { active: '使用中', stored: '保管', retired: '引退' },
+  skyLabels: { sunny: '晴れ', cloudy: '曇り', rain: '雨' },
+  windLabels: { weak: '弱い', strong: '強い' },
+  levelTempLabels: { cold: '寒い', ok: 'ちょうどよい', hot: '暑い' },
+  levelTempRepresentative: { cold: 4, ok: 14, hot: 27 }, // 簡易選択のときに使う代表気温(℃)
+
+  /* ペース：基準ペースに足す秒数/km。範囲は説明用、offsets が実際に使う値 */
+  pace: {
+    offsets: { jog: 75, recovery: 105, lsd: 90, tempo: 0, mp: 0, interval: -22, race: 0 },
+    ranges: { jog: [60, 90], lsd: [75, 105], tempo: [-5, 10], interval: [-30, -15] },
+    roundToSec: 5,
+    riegelExponent: 1.06,
+    // 目標・直近タイムが無いときの推定に使う「10kmの目安タイム(秒)」
+    level10kSec: { beginner: 3900, intermediate: 3120, advanced: 2520 }
+  },
+
+  /* トレーニング計画 */
+  plan: {
+    peakWeeklyKm: {
+      full: { beginner: 50, intermediate: 70, advanced: 90 },
+      half: { beginner: 35, intermediate: 45, advanced: 60 },
+      '10k': { beginner: 25, intermediate: 35, advanced: 45 },
+      '5k': { beginner: 18, intermediate: 28, advanced: 38 }
+    },
+    longRunMaxKm: {
+      full: { beginner: 28, intermediate: 32, advanced: 35 },
+      half: { beginner: 15, intermediate: 18, advanced: 21 },
+      '10k': { beginner: 12, intermediate: 14, advanced: 16 },
+      '5k': { beginner: 8, intermediate: 10, advanced: 12 }
+    },
+    minWeeks: { full: 8, half: 6, '10k': 4, '5k': 3 },
+    taperWeeks: { full: 2, half: 1, '10k': 1, '5k': 1 },
+    taperRatios: { 1: [0.6], 2: [0.7, 0.5] },
+    recoveryEvery: 4,        // 3週増やして4週目は軽く
+    recoveryRatio: 0.75,
+    maxGrowthPerWeek: 0.10,  // ピーク距離の上限を決める増加率の目安
+    minWeeklyKm: 6,
+    minKmPerRunDay: 3,       // 開始時の週間距離の下限 = 走る日数 × この値
+    minSessionKm: 3,
+    longTaperCapRatio: 0.7,
+    weights: { long: 3, q1: 2, q2: 2, easy: 1.5 },
+    // 曜日(0=日〜6=土)と役割。走る日数ごとの配置
+    templates: {
+      2: [{ wd: 3, role: 'q1' }, { wd: 0, role: 'long' }],
+      3: [{ wd: 2, role: 'easy' }, { wd: 4, role: 'q1' }, { wd: 0, role: 'long' }],
+      4: [{ wd: 2, role: 'easy' }, { wd: 4, role: 'q1' }, { wd: 6, role: 'easy' }, { wd: 0, role: 'long' }],
+      5: [{ wd: 2, role: 'q1' }, { wd: 3, role: 'easy' }, { wd: 5, role: 'q2' }, { wd: 6, role: 'easy' }, { wd: 0, role: 'long' }],
+      6: [{ wd: 1, role: 'easy' }, { wd: 2, role: 'q1' }, { wd: 4, role: 'easy' }, { wd: 5, role: 'q2' }, { wd: 6, role: 'easy' }, { wd: 0, role: 'long' }]
+    }
+  },
+
+  /* 栄養・水分の数値 */
+  fuel: { thresholdMin: 60, firstAtMin: 45, intervalMin: 40, endBufferMin: 15, carbPerGelG: 25, carbPerHourG: [30, 60],
+          carbLoadMinKm: 21, breakfastBeforeStartH: 3, preWaterBeforeStartH: 2 },
+  hydration: {
+    hotTempC: 25,
+    normal: { intervalMin: 20, ml: [100, 150] },
+    hot: { intervalMin: 15, ml: [150, 200] },
+    defaultTempC: 15
+  },
+  wear: {
+    effectiveTempOffset: 10, // 走ると体感は気温＋約10℃。下の段階はそれを前提にした服装
+    tiers: [
+      { below: 5, label: '5℃未満', upper: '長袖シャツ＋薄手ウインドブレーカー', lower: 'ロングタイツ',
+        acc: ['手袋', 'ネックウォーマー／バフ', 'ニット帽またはイヤーバンド'], wait: ['捨ててよい上着', 'ごみ袋（防寒・風よけ）', '使い捨てカイロ'] },
+      { below: 10, label: '5〜10℃', upper: '長袖シャツ（必要ならウインドブレーカー）', lower: 'ロングタイツまたはハーフタイツ',
+        acc: ['薄手の手袋', 'ネックウォーマー／バフ'], wait: ['捨ててよい上着', 'ごみ袋（防寒・風よけ）'] },
+      { below: 15, label: '10〜15℃', upper: '長袖シャツ、または半袖＋アームカバー', lower: 'ショーツ（寒がりならハーフタイツ）',
+        acc: ['アームカバー'], wait: ['捨ててよい上着'] },
+      { below: 20, label: '15〜20℃', upper: '半袖シャツ', lower: 'ショーツ',
+        acc: ['キャップ'], wait: ['待ち時間が長いなら薄手の上着'] },
+      { below: 25, label: '20〜25℃', upper: '薄手の半袖シャツ（袖なしでも可）', lower: '軽いショーツ',
+        acc: ['キャップ／サンバイザー', 'サングラス'], wait: [] },
+      { below: Infinity, label: '25℃以上', upper: '通気性のよい袖なしシャツ', lower: '軽いショーツ',
+        acc: ['キャップ／サンバイザー', 'サングラス', '日焼け止め'], wait: [] }
+    ],
+    rainItems: ['レインウエア（薄手のジャケットやポンチョ）', 'つば付きキャップ'],
+    strongWindItems: ['ウインドブレーカー'],
+    sunnyItems: ['サングラス', '日焼け止め'],
+    sunnyFromTempC: 15
+  },
+  eventFeed: { cacheKey: 'running_event_app_feed_cache_v1', timeoutMs: 8000, staleHours: 24, maxEvents: 2000, maxBytes: 1000000, suggestMax: 500 },
+  review: { evenRatio: 0.01, fadeRatio: 0.05, nearRatio: 0.03, lowRateRatio: 0.7, splitStepKm: 5, lessonCount: 2 },
+  shoes: { warnRatio: 0.8, overRatio: 1.0, defaultLimitKm: 600, limitRangeKm: [500, 800],
+           raceTrialMinKm: 10, raceNearRatio: 0.8 },
+  weather: {
+    forecastDays: 14,           // 予報を取得できる日数(今日を含む)
+    timeoutMs: 8000,
+    cacheMinutes: 30,
+    strongWindMs: 8,            // 最大風速(m/s)がこれ以上なら「強い」
+    raceHoursAfterStart: 4,     // スタート時刻があるとき、何時間分の気温を平均するか
+    // 天気コード(WMO) → 晴れ/曇り/雨。範囲 [from, to] で判定
+    codeMap: [
+      { from: 0, to: 1, sky: 'sunny' },
+      { from: 2, to: 48, sky: 'cloudy' },
+      { from: 51, to: 99, sky: 'rain' } // 雨・雪・雷雨は「雨（雪を含む）」
+    ],
+    geocodeUrl: 'https://geocoding-api.open-meteo.com/v1/search',
+    forecastUrl: 'https://api.open-meteo.com/v1/forecast'
+  }
+};
+
+/* ---------------------------------------------------------------
+   文章データ（あとから書き換え・追加しやすいように分離）
+   --------------------------------------------------------------- */
+const TEXT = {
+  menu: {
+    disclaimer: '取り込んだ・作成したメニューは、あなた自身の判断で使ってください。体調や痛みに合わせて、無理せず調整しましょう。',
+    careDisclaimer: '痛みや違和感があるときは中止して、必要なら専門家に相談してください。',
+    typeHints: { jog: '会話できる強さで', recovery: 'ジョグよりさらにゆっくり。疲れを抜く', lsd: '長めの距離をゆっくり', tempo: '少しきついが続けられる強さ', mp: '大会ペース（目標ペース）で走る練習', interval: '速い区間とつなぎのジョグを繰り返す', strides: '100m前後を軽く加速。本数は内容欄に' },
+    sampleCare: { weekly: { '火': '足首ケア', '水': '体幹', '金': '足首ケア' }, exercises: [
+      { name: '足首まわし', detail: '左右10回', how: '座って片足を持ち上げ、足首をゆっくり大きく回す。' },
+      { name: 'カーフレイズ', detail: '15回×2セット', how: '壁に手を添え、かかとをゆっくり上げ下げする。' },
+      { name: 'プランク', detail: '30秒×2セット', how: 'ひじとつま先で体を支え、頭からかかとまで一直線にする。' } ] },
+    csvExample: '# 日付,種類,距離(km),内容,補強・ケア,時期\n2026-11-02,ジョグ,6,楽に,足首ケア,導入期\n2026-11-04,テンポ,8,テンポ2km,,導入期\n2026-11-08,ロング,12,ゆっくり長く,,導入期\n2026-11-09,休養,,,,'
+  },
+  disclaimer: 'ここに表示する内容は一般的な目安であり、医療的な助言ではありません。個人の体質・持病・アレルギーは考慮していません。体調が悪いとき、持病があるときは、医師や専門家に相談してください。',
+  planDisclaimer: '自動作成した計画は一般的な目安です（医療的な助言ではありません）。体調に合わせて無理なく調整してください。',
+  tryRule: '普段のトレーニングで試したものを大会で使う。大会当日に初めて試さない。',
+  newGearRule: '本番で初めて着るウエアやシューズは使わない。練習で試してから。',
+  drinkCaution: '飲みすぎにも注意。のどの渇きに合わせて飲みましょう。',
+  shoeDisclaimer: '目安の走行距離は一般的な参考情報です。足の状態や走り方で変わります。',
+  carbLoad: { title: '大会前日までの数日', lines: ['炭水化物（ごはん・パン・麺）をいつもより少し多めに。', '脂っこいもの・食物繊維が多いもの・生ものは控えめに。', '新しい食べ物は試さない。'] },
+  breakfast: { title: '大会当日の朝食', lines: ['スタートの約3時間前が目安。', 'ごはん・パン・もち・うどんなど、消化のよい炭水化物が中心。', '食べ慣れたものを、食べ過ぎない量で。'] },
+  after: { title: '大会後のリカバリー', lines: ['なるべく早めに、炭水化物とたんぱく質をとる。', '例：おにぎり＋ヨーグルト、サンドイッチ＋牛乳など。'] },
+  hydrationDaily: { title: '普段の日', lines: ['一度にたくさんではなく、こまめに飲む。'] },
+  hydrationBefore: { title: '走る前', lines: ['走る約2時間前から、少しずつ飲む。', '直前に一気に飲まない。'] },
+  review: {
+    disclaimer: '自動で出す所見は、入力された数字から機械的に作った一般的なヒントです。',
+    insights: {
+      achieved: '目標タイムを達成しました。うまくいった条件（ペース配分・補給・ウエア）をメモしておくと、次回に活かせます。',
+      near: '目標まであと少しでした。ペース配分や補給の見直しで届く可能性があります。',
+      miss: '目標との差が大きめでした。目標の設定と、練習量・練習内容のバランスも振り返ってみましょう。',
+      fade: '後半のペースが大きく落ちています。前半を少し抑える、補給を早めに始める、練習の後半に強い走り（ペース走・LSDの後半）を入れる、などを検討しましょう。',
+      mildFade: '後半がやや遅めでした。長い距離では自然な範囲のことも多いです。',
+      even: '前半と後半がほぼ同じペースで、安定した走りでした。',
+      negative: '後半のほうが速い「ネガティブスプリット」でした。余力を残して走れていた可能性があります。',
+      lowRate: '練習の消化率が計画の7割を下回っていました。次回は無理のない計画の作り直しも検討しましょう。'
+    }
+  },
+  hydrationAfter: { title: '走った後', lines: ['失った水分を補給する。', '汗をたくさんかいたときは、塩分（スポーツドリンク・塩タブレットなど）も意識。'] }
+};
+
+
+/* ---------------------------------------------------------------
+   大会カタログ（名前を入力したときの自動入力に使う一般的な情報）
+   - 開催日・スタート時刻は変更されることがあります。必ず公式サイトで確認してください
+   - checked は、この情報を確認した日。追加・更新はこの配列を書き換えるだけでOK
+   - 自分が登録した大会も、次回から候補・自動入力の元になります
+   --------------------------------------------------------------- */
+const EVENT_CATALOG = [
+  { name: '神戸マラソン', aliases: ['Kobe Marathon'], date: '2026-11-15', startTime: '09:00', type: 'full', place: '神戸市', url: 'https://www.kobe-marathon.net/', checked: '2026-10-14', note: '開催日は公式サイトの記載。スタート時刻は参考サイトの情報です。' },
+  { name: '大阪マラソン', aliases: ['Osaka Marathon'], date: '2027-02-28', startTime: '09:15', type: 'full', place: '大阪市', url: 'https://www.osaka-marathon.com/', checked: '2026-10-14', note: '開催日は大阪府の発表。スタート時刻は参考サイトの情報（第1ウェーブ）で、ウェーブにより異なります。' },
+  { name: '東京マラソン', aliases: ['Tokyo Marathon'], date: '2027-03-07', startTime: '09:10', type: 'full', place: '東京都', url: 'https://www.marathon.tokyo/', checked: '2026-10-14', note: '開催日は公式サイトの記載。スタート時刻は参考サイトの情報です。' },
+  { name: '京都マラソン', aliases: ['Kyoto Marathon'], date: '2027-02-21', startTime: '09:00', type: 'full', place: '京都市', url: 'https://www.kyoto-marathon.com/', checked: '2026-10-14', note: '開催日・スタート時刻は参考サイトの情報です。' },
+  { name: '福岡マラソン', aliases: ['Fukuoka Marathon'], date: '2026-11-08', startTime: '', type: 'full', place: '福岡市', url: 'https://www.crossroadfukuoka.jp/event/11923', checked: '2026-10-14', note: '開催日は福岡市の発表。スタート時刻は未発表のため入力していません。' }
+];
+
+/* ---------------------------------------------------------------
+   日付・数値ユーティリティ
+   --------------------------------------------------------------- */
+const pad = n => (n < 10 ? '0' : '') + n;
+function dayNum(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
+  if (!m) return NaN;
+  const n = Math.round(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000);
+  return fromDayNum(n) === s ? n : NaN;
+}
+function fromDayNum(n) {
+  const d = new Date(n * 86400000);
+  return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate());
+}
+const isValidDate = s => !isNaN(dayNum(s));
+const weekdayOf = s => (((dayNum(s) + 4) % 7) + 7) % 7; // 0=日
+function todayStr() { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+const addDays = (s, n) => fromDayNum(dayNum(s) + n);
+const daysUntil = s => dayNum(s) - dayNum(todayStr());
+function fmtMD(s) { if (!isValidDate(s)) return ''; const p = s.split('-'); return (+p[1]) + '/' + (+p[2]) + '(' + '日月火水木金土'[weekdayOf(s)] + ')'; }
+function fmtFull(s) { if (!isValidDate(s)) return ''; const p = s.split('-'); return p[0] + '年' + (+p[1]) + '月' + (+p[2]) + '日(' + '日月火水木金土'[weekdayOf(s)] + ')'; }
+function mondayOf(s) { const wd = weekdayOf(s); return addDays(s, -((wd + 6) % 7)); }
+
+function norm(s) {
+  return String(s == null ? '' : s)
+    .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    .replace(/：/g, ':').replace(/[．。]/g, '.').replace(/\s+/g, '').replace(/\/km$/i, '');
+}
+function parseKm(s) { const t = norm(s).replace(/km$/i, ''); if (!/^\d+(\.\d+)?$/.test(t)) return null; const v = parseFloat(t); return v > 0 && v < 1000 ? v : null; }
+function parsePace(s) {
+  const m = /^(\d{1,2}):(\d{1,2})$/.exec(norm(s)); if (!m) return null;
+  if (+m[2] >= 60) return null; const v = +m[1] * 60 + +m[2]; return v > 0 ? v : null;
+}
+function parseDuration(s) {
+  const t = norm(s); let m, v = null;
+  if ((m = /^(\d{1,3}):(\d{1,2}):(\d{1,2})$/.exec(t))) { if (+m[2] >= 60 || +m[3] >= 60) return null; v = +m[1] * 3600 + +m[2] * 60 + +m[3]; }
+  else if ((m = /^(\d{1,3}):(\d{1,2})$/.exec(t))) { if (+m[2] >= 60) return null; v = +m[1] * 60 + +m[2]; }
+  else if (/^\d+$/.test(t)) v = +t * 60;
+  return v > 0 ? v : null;
+}
+const formatPace = sec => (sec > 0 && isFinite(sec)) ? Math.floor(Math.round(sec) / 60) + ':' + pad(Math.round(sec) % 60) : '';
+function formatDuration(sec) {
+  if (!(sec > 0) || !isFinite(sec)) return '';
+  const t = Math.round(sec); return Math.floor(t / 3600) + ':' + pad(Math.floor(t % 3600 / 60)) + ':' + pad(t % 60);
+}
+const formatKm = km => (km > 0 && isFinite(km)) ? String(Math.round(km * 100) / 100) : '';
+const roundHalf = x => Math.round(x * 2) / 2;
+
+/* 距離・ペース・時間のうち2つから残り1つを計算。
+   3つ揃っているときは「直近に触った2つ」を残し、もう1つを再計算 */
+function solveTriad(v, editedOrder) {
+  const keys = ['km', 'pace', 'dur'];
+  const out = { km: v.km || null, pace: v.pace || null, dur: v.dur || null };
+  const filled = keys.filter(k => out[k] > 0);
+  if (filled.length < 2) return out;
+  let target;
+  if (filled.length === 2) target = keys.find(k => !filled.includes(k));
+  else {
+    const recent = [];
+    for (let i = (editedOrder || []).length - 1; i >= 0 && recent.length < 2; i--) if (!recent.includes(editedOrder[i])) recent.push(editedOrder[i]);
+    const cand = keys.filter(k => !recent.includes(k));
+    target = cand.includes('dur') ? 'dur' : cand[0];
+  }
+  if (target === 'dur') out.dur = Math.round(out.km * out.pace);
+  else if (target === 'pace') out.pace = Math.round(out.dur / out.km);
+  else out.km = Math.round(out.dur / out.pace * 100) / 100;
+  return out;
+}
+const eventKm = ev => (ev && ev.distanceKm > 0) ? ev.distanceKm : null;
+function predictSec(sec1, km1, km2) { return sec1 * Math.pow(km2 / km1, CONFIG.pace.riegelExponent); }
+function bucketOf(km) { return km <= 7.5 ? '5k' : km <= 15 ? '10k' : km <= 30 ? 'half' : 'full'; }
+
+/* 基準ペース（目標 → 直近タイム → 走力レベルの順に採用） */
+function basePace(p) {
+  const km = p.distanceKm;
+  if (!(km > 0)) return null;
+  if (p.goalSec > 0) return { paceSec: p.goalSec / km, source: 'goal' };
+  if (p.recentSec > 0 && p.recentKm > 0) return { paceSec: predictSec(p.recentSec, p.recentKm, km) / km, source: 'recent' };
+  const lv = CONFIG.pace.level10kSec[p.level] || CONFIG.pace.level10kSec.intermediate;
+  return { paceSec: predictSec(lv, 10, km) / km, source: 'level' };
+}
+function paceFor(type, base) {
+  if (!(base > 0) || type === 'rest') return null;
+  const off = CONFIG.pace.offsets[type]; if (off == null) return null;
+  const r = CONFIG.pace.roundToSec; return Math.round((base + off) / r) * r;
+}
+
+/* ---------------------------------------------------------------
+   トレーニング計画の自動生成
+   --------------------------------------------------------------- */
+function menuMemo(type, km, phase) {
+  if (type === 'interval') { const reps = Math.max(3, Math.min(10, Math.round((km - 3) / 1.4))); return '1000m×' + reps + '本（つなぎ400mジョグ）＋ウォームアップ・クールダウン'; }
+  if (type === 'tempo') { const main = Math.max(2, Math.round((km - 3) * 0.7)); return 'ウォームアップ後、' + main + 'kmをペース走' + (phase === 'base' ? '（ゆったりめ、無理せず）' : ''); }
+  if (type === 'lsd') return '会話できるペースでゆっくり長く';
+  if (type === 'jog') return '楽に会話できる強さで';
+  return '';
+}
+function allocWeek(vol, tpl, cap) {
+  const W = CONFIG.plan.weights;
+  const ws = tpl.map(t => W[t.role]); const sum = ws.reduce((a, b) => a + b, 0);
+  const km = ws.map(w => vol * w / sum);
+  const li = tpl.findIndex(t => t.role === 'long');
+  if (li >= 0 && km[li] > cap) {
+    const ex = km[li] - cap; km[li] = cap;
+    const osum = ws.reduce((a, w, i) => a + (i === li ? 0 : w), 0);
+    if (osum > 0) km.forEach((x, i) => { if (i !== li) km[i] += ex * ws[i] / osum; });
+  }
+  return km.map(x => Math.max(CONFIG.plan.minSessionKm, roundHalf(x)));
+}
+
+function generatePlan(p) {
+  const P = CONFIG.plan, warnings = [];
+  const s = dayNum(p.startDate), e = dayNum(p.eventDate);
+  if (isNaN(s) || isNaN(e)) return { error: '日付が正しくありません。' };
+  if (!(p.distanceKm > 0)) return { error: '種目の距離が正しくありません。' };
+  const days = e - s;
+  if (days < 1) return { error: '計画の開始日は、開催日より前にしてください。' };
+  const D = Math.max(2, Math.min(6, Math.round(p.daysPerWeek) || 3));
+  const level = CONFIG.levels[p.level] ? p.level : 'beginner';
+  const bucket = bucketOf(p.distanceKm);
+  const W = Math.ceil(days / 7);
+  const minW = P.minWeeks[bucket];
+  if (W < minW) warnings.push('期間が短めです（約' + W + '週間。目安は' + minW + '週間以上）。無理のない範囲で、ピーク距離を控えめにした計画にしています。');
+  let T = Math.min(P.taperWeeks[bucket], Math.max(1, Math.floor(W / 3)));
+  const N = W - T;
+  const recCount = N >= 3 ? Math.floor((N - 1) / P.recoveryEvery) : 0;
+  const V0 = Math.max(parseFloat(p.currentWeeklyKm) || 0, P.minWeeklyKm, D * P.minKmPerRunDay);
+  const growthCap = V0 * Math.pow(1 + P.maxGrowthPerWeek, Math.max(N - recCount - 1, 0));
+  const peak = Math.max(V0, Math.min(P.peakWeeklyKm[bucket][level], growthCap));
+  if (peak < P.peakWeeklyKm[bucket][level] * 0.7) warnings.push('現在の週間距離から無理なく増やせる範囲で計画しています（ピーク約' + Math.round(peak) + 'km/週）。');
+
+  // 週ごとの距離と時期
+  const vols = [], phases = [], isRec = [];
+  const nonRecIdx = [];
+  for (let k = 0; k < N; k++) { const rec = N >= 3 && (k + 1) % P.recoveryEvery === 0 && k !== N - 1; isRec.push(rec); if (!rec) nonRecIdx.push(k); }
+  const baseWeeks = Math.ceil(N / 2);
+  for (let k = 0; k < N; k++) {
+    phases.push(k < baseWeeks ? 'base' : 'build');
+    if (isRec[k]) vols.push(roundHalf(vols[k - 1] * P.recoveryRatio));
+    else {
+      const r = nonRecIdx.indexOf(k), R = nonRecIdx.length;
+      vols.push(roundHalf(R > 1 ? V0 + (peak - V0) * r / (R - 1) : V0));
+    }
+  }
+  const lastPeak = vols.length ? Math.max.apply(null, vols) : V0;
+  const ratios = P.taperRatios[T] || P.taperRatios[1];
+  for (let i = 0; i < T; i++) { vols.push(roundHalf(lastPeak * ratios[Math.min(i, ratios.length - 1)])); phases.push('taper'); isRec.push(false); }
+
+  const base = basePace({ distanceKm: p.distanceKm, goalSec: p.goalSec, recentSec: p.recentSec, recentKm: p.recentKm, level });
+  const tpl = P.templates[D];
+  const roleByWd = {}; tpl.forEach(t => { roleByWd[t.wd] = t.role; });
+  const longMax = P.longRunMaxKm[bucket][level];
+  const alloc = vols.map((v, w) => allocWeek(v, tpl, phases[w] === 'taper' ? longMax * P.longTaperCapRatio : longMax));
+
+  const items = [];
+  for (let d = s; d < e; d++) {
+    const date = fromDayNum(d), w = Math.floor((d - s) / 7), wd = weekdayOf(date), phase = phases[w];
+    let role = roleByWd[wd], type = 'rest', km = 0, memo = '';
+    if (role) {
+      const idx = tpl.findIndex(t => t.wd === wd); km = alloc[w][idx];
+      if (role === 'long') type = 'lsd';
+      else if (role === 'easy') type = 'jog';
+      else if (role === 'q1') type = phase === 'build' ? ((level === 'beginner' && w % 2 === 1) ? 'tempo' : 'interval') : 'tempo';
+      else type = phase === 'build' ? 'tempo' : 'jog';
+    }
+    if (e - d === 1) { type = 'rest'; km = 0; memo = '休養・最終準備。早めに就寝。'; }
+    else if (e - d === 2 && type !== 'rest') { type = 'jog'; km = 3; memo = '体をほぐす程度に軽く'; }
+    else if (type !== 'rest') memo = menuMemo(type, km, phase);
+    items.push({ date, type, distanceKm: type === 'rest' ? null : km, paceSec: paceFor(type, base ? base.paceSec : null),
+      durationSec: null, memo, phase, source: 'plan' });
+  }
+  items.forEach(it => { if (it.distanceKm > 0 && it.paceSec > 0) it.durationSec = Math.round(it.distanceKm * it.paceSec); });
+  items.push({ date: p.eventDate, type: 'race', distanceKm: p.distanceKm, paceSec: base ? Math.round(base.paceSec) : null,
+    durationSec: base ? Math.round(base.paceSec * p.distanceKm) : null, memo: '大会当日', phase: 'race', source: 'plan' });
+
+  const weeks = vols.map((v, w) => ({ index: w + 1, startDate: fromDayNum(s + w * 7), phase: phases[w], recovery: !!isRec[w], volumeKm: v }));
+  return { items, warnings, weeks, basePace: base, params: { D, level, W, T, N, V0, peak: roundHalf(peak) } };
+}
+
+/* 生成結果を既存の練習記録へ反映。手動編集した日・完了済みの日は上書きしない */
+function mergePlan(existing, items, eventId, overwrite, newId, shoeId, source) {
+  const src = source === 'menu' ? 'menu' : 'plan';
+  const mine = existing.filter(w => w.eventId === eventId);
+  const others = existing.filter(w => w.eventId !== eventId);
+  let kept = mine;
+  if (overwrite) kept = mine.filter(w => !((w.source === 'plan' || w.source === 'menu') && !w.done && !w.manual));
+  const taken = new Set(kept.map(w => w.date));
+  const added = [];
+  items.forEach(it => {
+    if (taken.has(it.date)) return;
+    added.push({ id: newId(), eventId, date: it.date, type: it.type, distanceKm: it.distanceKm, paceSec: it.paceSec, durationSec: it.durationSec,
+      shoeId: it.type === 'rest' ? null : (shoeId || null), memo: it.memo || '', strength: it.strength || '', phase: it.phase || '', done: false, actualDistanceKm: null, actualDurationSec: null,
+      source: src, manual: false, weather: null });
+  });
+  return { workouts: others.concat(kept, added), added: added.length, skipped: items.length - added.length };
+}
+
+/* ---------------------------------------------------------------
+   栄養・水分・ウエアの提案
+   --------------------------------------------------------------- */
+function fuelPlan(totalSec, paceSec) {
+  const F = CONFIG.fuel, min = totalSec / 60;
+  if (!(totalSec > 0) || min <= F.thresholdMin) return { needed: false, items: [], carbsG: 0, totalMin: Math.round(min) };
+  const items = [];
+  for (let t = F.firstAtMin; t <= min - F.endBufferMin; t += F.intervalMin) items.push({ atMin: t, km: paceSec > 0 ? Math.round(t * 60 / paceSec * 10) / 10 : null });
+  return { needed: true, items, carbsG: items.length * F.carbPerGelG, totalMin: Math.round(min) };
+}
+function hydrationPlan(totalSec, tempC) {
+  const H = CONFIG.hydration, t = (tempC == null || isNaN(tempC)) ? H.defaultTempC : tempC;
+  const hot = t >= H.hotTempC, c = hot ? H.hot : H.normal, min = totalSec / 60;
+  const times = [];
+  if (min > 0) for (let x = c.intervalMin; x <= min - 5; x += c.intervalMin) times.push(x);
+  return { hot, intervalMin: c.intervalMin, ml: c.ml, times, totalMlRange: [times.length * c.ml[0], times.length * c.ml[1]] };
+}
+function tempFromWeather(w) {
+  if (!w) return null;
+  if (w.temp != null && w.temp !== '' && !isNaN(+w.temp)) return +w.temp;
+  if (w.level && CONFIG.levelTempRepresentative[w.level] != null) return CONFIG.levelTempRepresentative[w.level];
+  return null;
+}
+function wearAdvice(w, context) {
+  const C = CONFIG.wear, t = tempFromWeather(w);
+  if (t == null) return null;
+  let idx = C.tiers.findIndex(x => t < x.below);
+  const base = idx;
+  const rain = w && w.sky === 'rain', strong = w && w.wind === 'strong';
+  const notes = [];
+  if ((rain || strong) && idx > 0) { idx -= 1; notes.push((rain ? '雨' : '強い風') + 'のため、一段階しっかりめの服装にしています。'); }
+  const tier = C.tiers[idx];
+  const acc = tier.acc.slice(), wait = context === 'race' ? tier.wait.slice() : [];
+  if (rain) C.rainItems.forEach(x => acc.push(x));
+  if (strong && !tier.upper.includes('ウインドブレーカー')) C.strongWindItems.forEach(x => acc.push(x));
+  if (w && w.sky === 'sunny' && t >= C.sunnyFromTempC) C.sunnyItems.forEach(x => { if (!acc.some(a => a.includes(x))) acc.push(x); });
+  const uniq = Array.from(new Set(acc));
+  return { temp: t, tierLabel: C.tiers[base].label, upper: tier.upper, lower: tier.lower, acc: uniq, wait, notes, packable: uniq.concat(wait) };
+}
+
+/* 大会の想定所要時間（目標タイムが無いときは中級者の目安で推定） */
+function raceDuration(ev) {
+  const km = eventKm(ev); if (!km) return null;
+  if (ev.goalSec > 0) return { sec: ev.goalSec, paceSec: ev.goalSec / km, estimated: false };
+  const b = basePace({ distanceKm: km, level: 'intermediate' });
+  return { sec: b.paceSec * km, paceSec: b.paceSec, estimated: true };
+}
+function timeAddHours(hhmm, deltaMin) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm || ''); if (!m) return null;
+  let t = (+m[1] * 60 + +m[2] + deltaMin) % 1440; if (t < 0) t += 1440;
+  return pad(Math.floor(t / 60)) + ':' + pad(t % 60);
+}
+
+/* 日ごとのひとことアドバイス（練習用） */
+function dayAdvice(w, weather) {
+  const cards = [], min = (w.durationSec || 0) / 60;
+  if (w.type === 'rest') {
+    cards.push({ kind: 'hydration', title: '水分', text: TEXT.hydrationDaily.lines[0] });
+    cards.push({ kind: 'nutrition', title: '栄養', text: '休養日も食事はしっかり。炭水化物とたんぱく質をバランスよく。' });
+    return cards;
+  }
+  const wear = wearAdvice(weather, w.type === 'race' ? 'race' : 'train');
+  if (wear) cards.push({ kind: 'wear', title: 'ウエア', text: wear.upper + '／' + wear.lower + (wear.acc.length ? '／小物：' + wear.acc.join('・') : '') });
+  else cards.push({ kind: 'wear', title: 'ウエア', text: '天気・気温を入力するとウエアの提案が出ます。' });
+  const temp = tempFromWeather(weather);
+  if (min > 0) {
+    const h = hydrationPlan(w.durationSec, temp);
+    if (h.times.length) cards.push({ kind: 'hydration', title: '水分', text: '走行中は約' + h.intervalMin + '分ごとに' + h.ml[0] + '〜' + h.ml[1] + 'mlを目安に。' + (h.hot ? '暑いので回数を増やしましょう。' : '') + TEXT.drinkCaution });
+    else cards.push({ kind: 'hydration', title: '水分', text: '走る約2時間前から少しずつ飲んでおく。' + TEXT.drinkCaution });
+    const f = fuelPlan(w.durationSec, w.paceSec);
+    if (f.needed) cards.push({ kind: 'nutrition', title: '補給', text: '約' + f.totalMin + '分の長い練習です。' + f.items.map(i => i.atMin + '分頃').join('・') + 'にエネルギー補給（ジェルなど）を試しましょう。大会で使うものを練習で試すチャンスです。' });
+    else cards.push({ kind: 'nutrition', title: '栄養', text: '走った後は炭水化物とたんぱく質を早めに。' });
+  } else cards.push({ kind: 'hydration', title: '水分', text: TEXT.hydrationDaily.lines[0] });
+  return cards;
+}
+
+/* ---------------------------------------------------------------
+   シューズ（画面から独立した集計・判定）
+   --------------------------------------------------------------- */
+function shoeUsageRecords(workouts, shoeId) { return workouts.filter(w => w.done && w.shoeId === shoeId); }
+function recordKm(w) { return (w.actualDistanceKm > 0 ? w.actualDistanceKm : (w.distanceKm > 0 ? w.distanceKm : 0)); }
+function shoeTotalKm(shoe, workouts) {
+  return (shoe.initialKm || 0) + shoeUsageRecords(workouts, shoe.id).reduce((a, w) => a + recordKm(w), 0); // 毎回、記録から合計を計算
+}
+function shoeLastUsed(shoe, workouts) {
+  const d = shoeUsageRecords(workouts, shoe.id).map(w => w.date).sort(); return d.length ? d[d.length - 1] : null;
+}
+function shoeStatus(totalKm, limitKm) {
+  const r = limitKm > 0 ? totalKm / limitKm : 0;
+  if (r > CONFIG.shoes.overRatio) return { level: 'over', ratio: r, label: '目安を超えています' };
+  if (r > CONFIG.shoes.warnRatio) return { level: 'warn', ratio: r, label: 'そろそろ買い替えを検討' };
+  return { level: 'ok', ratio: r, label: '' };
+}
+function shoeTrainingKm(shoe, workouts) { return shoeUsageRecords(workouts, shoe.id).filter(w => w.type !== 'race').reduce((a, w) => a + recordKm(w), 0); }
+function raceShoeChecks(ev, shoes, workouts) {
+  const out = []; if (!ev || !ev.shoeId) return out;
+  const shoe = shoes.find(s => s.id === ev.shoeId); if (!shoe) return out;
+  const trial = shoeTrainingKm(shoe, workouts);
+  if (trial < CONFIG.shoes.raceTrialMinKm) out.push({ level: 'warn', text: '「' + shoe.name + '」は練習でまだ ' + formatKm(trial) + 'km しか走っていません。本番前に試走しておきましょう（目安 ' + CONFIG.shoes.raceTrialMinKm + 'km 以上）。' });
+  const total = shoeTotalKm(shoe, workouts);
+  const planned = workouts.filter(w => w.shoeId === shoe.id && !w.done && w.eventId === ev.id && w.date <= ev.date).reduce((a, w) => a + (w.distanceKm || 0), 0);
+  const ratioNow = shoe.limitKm > 0 ? total / shoe.limitKm : 0, ratioEvent = shoe.limitKm > 0 ? (total + planned) / shoe.limitKm : 0;
+  if (ratioNow >= CONFIG.shoes.raceNearRatio || ratioEvent >= CONFIG.shoes.raceNearRatio)
+    out.push({ level: 'warn', text: '「' + shoe.name + '」は目安距離（' + shoe.limitKm + 'km）に近づいています（現在 ' + formatKm(total) + 'km）。大会前に買い替えるか検討を。新品にする場合は、本番前に試走を。' });
+  return out;
+}
+
+/* ---------------------------------------------------------------
+   天気（Open-Meteo）。設定オン＋同意が無ければ、通信コードは動かない
+   --------------------------------------------------------------- */
+const Weather = {
+  isEnabled(settings) { return !!(settings && settings.autoWeather === true && settings.consent && settings.consent.at); },
+  codeToSky(code) { const m = CONFIG.weather.codeMap.find(r => code >= r.from && code <= r.to); return m ? m.sky : 'cloudy'; },
+  windLabel(ms) { return ms >= CONFIG.weather.strongWindMs ? 'strong' : 'weak'; },
+  /* 予報を取得できる日か。{ok, message} */
+  range(dateStr) {
+    if (!isValidDate(dateStr)) return { ok: false, message: '日付を確認してください。' };
+    const d = daysUntil(dateStr), max = CONFIG.weather.forecastDays - 1;
+    if (d < 0) return { ok: false, message: '過去の日は取得できません。手入力できます。' };
+    if (d > max) return { ok: false, message: '予報はまだ出せません（' + (d - max) + '日後から取得できます）。手入力できます。' };
+    return { ok: true, message: '' };
+  },
+  /* 予報JSONから、指定日の気温・天気・風を取り出す（通信しない純粋な関数） */
+  pick(json, date, opts) {
+    const dl = json && json.daily; if (!dl || !dl.time) return null;
+    const i = dl.time.indexOf(date); if (i < 0) return null;
+    const tmax = dl.temperature_2m_max[i], tmin = dl.temperature_2m_min[i], ws = dl.wind_speed_10m_max[i], code = dl.weather_code[i];
+    let temp = (tmax + tmin) / 2, basis = 'daily';
+    if (opts && opts.startTime && json.hourly && json.hourly.time) {
+      const h = +String(opts.startTime).split(':')[0], hours = opts.hours || CONFIG.weather.raceHoursAfterStart, vals = [];
+      for (let k = 0; k < hours; k++) {
+        const key = date + 'T' + pad(h + k) + ':00', j = json.hourly.time.indexOf(key);
+        if (j >= 0 && json.hourly.temperature_2m[j] != null) vals.push(json.hourly.temperature_2m[j]);
+      }
+      if (vals.length) { temp = vals.reduce((a, b) => a + b, 0) / vals.length; basis = 'hourly'; }
+    }
+    return { temp: Math.round(temp), tempMax: tmax, tempMin: tmin, sky: Weather.codeToSky(code), wind: Weather.windLabel(ws), windMs: ws, code, basis };
+  },
+  async _get(url, settings) {
+    if (!Weather.isEnabled(settings)) throw new Error('disabled');
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), CONFIG.weather.timeoutMs);
+    try { const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) throw new Error('http ' + r.status); return await r.json(); }
+    finally { clearTimeout(timer); }
+  },
+  async searchPlace(name, settings) {
+    const q = String(name || '').trim(); if (!q) throw new Error('empty');
+    const j = await Weather._get(CONFIG.weather.geocodeUrl + '?name=' + encodeURIComponent(q) + '&count=5&language=ja&format=json', settings);
+    return (j.results || []).map(r => ({ name: r.name, admin: [r.admin1, r.country].filter(Boolean).join(' / '), lat: r.latitude, lon: r.longitude }));
+  },
+  geolocate(settings) {
+    return new Promise((resolve, reject) => {
+      if (!Weather.isEnabled(settings)) return reject(new Error('disabled'));
+      if (!navigator.geolocation) return reject(new Error('unsupported'));
+      navigator.geolocation.getCurrentPosition(p => resolve({ name: '現在地', lat: p.coords.latitude, lon: p.coords.longitude }), e => reject(e), { timeout: CONFIG.weather.timeoutMs, maximumAge: 600000 });
+    });
+  },
+  _cache() { try { return JSON.parse(localStorage.getItem(CONFIG.weatherCacheKey) || '{}') || {}; } catch (e) { return {}; } },
+  _saveCache(c) { try { localStorage.setItem(CONFIG.weatherCacheKey, JSON.stringify(c)); } catch (e) { /* 無視 */ } },
+  clearCache() { try { localStorage.removeItem(CONFIG.weatherCacheKey); } catch (e) { /* 無視 */ } },
+  /* ボタンを押したときだけ呼ばれる。geo={lat,lon}, opts={startTime} */
+  async fetchDay(geo, date, opts, settings) {
+    const rg = Weather.range(date); if (!rg.ok) throw new Error('range');
+    if (!geo || geo.lat == null) throw new Error('nogeo');
+    const key = geo.lat.toFixed(2) + ',' + geo.lon.toFixed(2) + '|' + date + '|' + ((opts && opts.startTime) || '');
+    const cache = Weather._cache(), hit = cache[key];
+    if (hit && Date.now() - hit.at < CONFIG.weather.cacheMinutes * 60000) return Object.assign({ cached: true }, hit.value, { fetchedAt: hit.at });
+    const url = CONFIG.weather.forecastUrl + '?latitude=' + geo.lat + '&longitude=' + geo.lon +
+      '&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max&hourly=temperature_2m&wind_speed_unit=ms&timezone=auto&forecast_days=' + CONFIG.weather.forecastDays;
+    const json = await Weather._get(url, settings);
+    const value = Weather.pick(json, date, opts); if (!value) throw new Error('nodata');
+    const now = Date.now(); cache[key] = { at: now, value }; Weather._saveCache(cache);
+    return Object.assign({ cached: false }, value, { fetchedAt: now });
+  }
+};
+
+/* ---------------------------------------------------------------
+   保存データの検証・書き出し・読み込み
+   --------------------------------------------------------------- */
+const isObj = x => x && typeof x === 'object' && !Array.isArray(x);
+const str = (x, d) => (typeof x === 'string' ? x : (d == null ? '' : d));
+const numOrNull = x => (x === null || x === '' || x === undefined || isNaN(+x) ? null : +x);
+const pick = (x, list, d) => (list.includes(x) ? x : d);
+function sanitizeWeather(w) {
+  if (!isObj(w)) return null;
+  return { temp: numOrNull(w.temp), sky: pick(w.sky, ['sunny', 'cloudy', 'rain'], null), wind: pick(w.wind, ['weak', 'strong'], null),
+    level: pick(w.level, ['cold', 'ok', 'hot'], null), source: pick(w.source, ['manual', 'auto'], null), at: typeof w.at === 'number' ? w.at : null };
+}
+function sanitizeResult(r) {
+  if (!isObj(r)) return null;
+  const splits = Array.isArray(r.splits) ? r.splits.filter(x => isObj(x) && +x.km > 0 && +x.sec > 0).map(x => ({ km: +x.km, sec: +x.sec })).sort((a, b) => a.km - b.km) : [];
+  const sat = numOrNull(r.satisfaction);
+  return { status: pick(r.status, ['finished', 'dnf', 'dns'], 'finished'), finishSec: numOrNull(r.finishSec) > 0 ? numOrNull(r.finishSec) : null, rank: str(r.rank),
+    weather: sanitizeWeather(r.weather), shoeId: str(r.shoeId) || null, satisfaction: sat >= 1 && sat <= 5 ? Math.round(sat) : null, splits,
+    pacing: str(r.pacing), fuel: str(r.fuel), wear: str(r.wear), good: str(r.good), improve: str(r.improve), next: str(r.next), memo: str(r.memo) };
+}
+function sanitizeGeo(g) { return (isObj(g) && isFinite(+g.lat) && isFinite(+g.lon)) ? { name: str(g.name), lat: +g.lat, lon: +g.lon } : null; }
+
+/* 古い形式・壊れた形式でも落ちないように整える。settings は別扱い（読み込み対象外） */
+function sanitizeData(raw) {
+  const arr = a => (Array.isArray(a) ? a.filter(isObj) : []);
+  const ids = new Set();
+  const withId = (o, fallback) => { let id = str(o.id) || fallback(); while (ids.has(id)) id += 'x'; ids.add(id); return id; };
+  let n = 0; const mk = p => () => p + (++n) + Math.random().toString(36).slice(2, 6);
+  const src = isObj(raw) && isObj(raw.data) ? raw.data : (isObj(raw) ? raw : {});
+  const events = arr(src.events).map(e => {
+    const type = pick(e.type, Object.keys(CONFIG.eventTypes), 'fun');
+    const km = CONFIG.eventTypes[type].km || numOrNull(e.distanceKm);
+    return { id: withId(e, mk('e')), name: str(e.name, '無題の大会'), date: isValidDate(e.date) ? e.date : todayStr(), type, distanceKm: km > 0 ? km : null,
+      goalSec: numOrNull(e.goalSec) > 0 ? numOrNull(e.goalSec) : null, place: str(e.place), placeGeo: sanitizeGeo(e.placeGeo),
+      startTime: /^\d{1,2}:\d{2}$/.test(str(e.startTime)) ? e.startTime : '', shoeId: str(e.shoeId) || null, weather: sanitizeWeather(e.weather), result: sanitizeResult(e.result) };
+  });
+  const shoes = arr(src.shoes).map(s => ({ id: withId(s, mk('s')), name: str(s.name, '名称未設定'), brand: str(s.brand), use: pick(s.use, Object.keys(CONFIG.shoeUses), 'training'),
+    purchaseDate: isValidDate(s.purchaseDate) ? s.purchaseDate : '', initialKm: Math.max(0, numOrNull(s.initialKm) || 0),
+    limitKm: numOrNull(s.limitKm) > 0 ? numOrNull(s.limitKm) : CONFIG.shoes.defaultLimitKm, status: pick(s.status, Object.keys(CONFIG.shoeStatuses), 'active'), memo: str(s.memo) }));
+  const eventIds = new Set(events.map(e => e.id)), shoeIds = new Set(shoes.map(s => s.id));
+  events.forEach(e => { if (e.result && e.result.shoeId && !shoeIds.has(e.result.shoeId)) e.result.shoeId = null; });
+  const workouts = arr(src.workouts).filter(w => isValidDate(w.date)).map(w => ({
+    id: withId(w, mk('w')), eventId: eventIds.has(w.eventId) ? w.eventId : (events[0] ? events[0].id : null), date: w.date,
+    type: pick(w.type, Object.keys(CONFIG.menuTypes), 'jog'), distanceKm: numOrNull(w.distanceKm) > 0 ? numOrNull(w.distanceKm) : null,
+    paceSec: numOrNull(w.paceSec) > 0 ? numOrNull(w.paceSec) : null, durationSec: numOrNull(w.durationSec) > 0 ? numOrNull(w.durationSec) : null,
+    shoeId: shoeIds.has(w.shoeId) ? w.shoeId : null, memo: str(w.memo), strength: str(w.strength).slice(0, 200), phase: str(w.phase).slice(0, 20), done: w.done === true,
+    actualDistanceKm: numOrNull(w.actualDistanceKm) > 0 ? numOrNull(w.actualDistanceKm) : null,
+    actualDurationSec: numOrNull(w.actualDurationSec) > 0 ? numOrNull(w.actualDurationSec) : null,
+    source: w.source === 'plan' ? 'plan' : (w.source === 'menu' ? 'menu' : 'manual'), manual: w.manual === true, weather: sanitizeWeather(w.weather) }));
+  const dayItems = arr(src.dayItems).filter(d => /^\d{1,2}:\d{2}$/.test(str(d.time))).map(d => ({ id: withId(d, mk('d')), eventId: eventIds.has(d.eventId) ? d.eventId : (events[0] ? events[0].id : null), time: d.time, title: str(d.title, '予定'), memo: str(d.memo) }));
+  const packing = arr(src.packing).map(p => ({ id: withId(p, mk('p')), eventId: eventIds.has(p.eventId) ? p.eventId : (events[0] ? events[0].id : null), text: str(p.text, '持ち物'), checked: p.checked === true, auto: p.auto === 'shoe' ? 'shoe' : null }));
+  const menus = {}; if (isObj(src.menus)) Object.keys(src.menus).forEach(k => { if (eventIds.has(k)) menus[k] = sanitizeMenu(src.menus[k]); });
+  return { events, shoes, workouts, dayItems, packing, menus, currentEventId: eventIds.has(src.currentEventId) ? src.currentEventId : (events[0] ? events[0].id : null) };
+}
+function sanitizeSettings(s) {
+  s = isObj(s) ? s : {};
+  const consent = isObj(s.consent) && typeof s.consent.at === 'number' ? { at: s.consent.at } : null;
+  const fc = isObj(s.eventFeed) ? s.eventFeed : {};
+  const fconsent = isObj(fc.consent) && typeof fc.consent.at === 'number' ? { at: fc.consent.at } : null;
+  return { autoWeather: s.autoWeather === true && !!consent, consent, homeLocation: sanitizeGeo(s.homeLocation), defaultShoeId: str(s.defaultShoeId) || null,
+    eventFeed: { enabled: fc.enabled === true && !!fconsent, consent: fconsent, url: str(fc.url).slice(0, 500) } };
+}
+function sanitizeState(raw) {
+  const d = sanitizeData(raw), st = sanitizeSettings(isObj(raw) ? raw.settings : null);
+  if (st.defaultShoeId && !d.shoes.some(s => s.id === st.defaultShoeId)) st.defaultShoeId = null;
+  return Object.assign(d, { version: CONFIG.dataVersion, settings: st, planPrefs: isObj(raw) && isObj(raw.planPrefs) ? raw.planPrefs : {} });
+}
+/* 書き出し：設定（自動取得のオン・同意・よく走る場所）は含めない */
+function exportData(state, includeLocation) {
+  const copy = JSON.parse(JSON.stringify({ events: state.events, workouts: state.workouts, dayItems: state.dayItems, packing: state.packing, shoes: state.shoes, menus: state.menus || {}, currentEventId: state.currentEventId }));
+  if (!includeLocation) copy.events.forEach(e => { e.place = ''; e.placeGeo = null; });
+  return { app: 'running-event-app', version: CONFIG.dataVersion, exportedAt: new Date().toISOString(), includesLocation: !!includeLocation, data: copy };
+}
+function parseImport(text) {
+  let j; try { j = JSON.parse(text); } catch (e) { return { error: 'JSONとして読み込めませんでした。' }; }
+  if (!isObj(j) || (j.app && j.app !== 'running-event-app')) return { error: 'このアプリのデータ形式ではありません。' };
+  if (j.version && j.version > CONFIG.dataVersion) return { error: 'より新しい形式のデータです。アプリを更新してください。' };
+  const d = sanitizeData(j);
+  return { data: d, counts: { events: d.events.length, workouts: d.workouts.length, shoes: d.shoes.length } };
+}
+
+
+
+/* ---------------------------------------------------------------
+   大会情報の自動取得（任意）。設定オン＋同意＋https のURLがあるときだけ動く。
+   ・通信するのは取得元URLへの GET だけ（入力した大会名は送らない）
+   ・取得した一覧は、この端末の中で名前と照合する
+   ・ボタンを押したときだけ通信する（勝手に通信しない）
+   --------------------------------------------------------------- */
+function sanitizeFeedEvent(x) {
+  if (!isObj(x)) return null;
+  const name = str(x.name).trim().slice(0, 100); if (!name) return null;
+  const km = numOrNull(x.distanceKm), st = str(x.startTime), m = /^(\d{1,2}):(\d{2})$/.exec(st);
+  return { name, aliases: Array.isArray(x.aliases) ? x.aliases.filter(a => typeof a === 'string').slice(0, 10).map(a => a.slice(0, 100)) : [],
+    date: isValidDate(x.date) ? x.date : '', startTime: (m && +m[1] < 24 && +m[2] < 60) ? pad(+m[1]) + ':' + m[2] : '',
+    type: pick(x.type, Object.keys(CONFIG.eventTypes), 'fun'), distanceKm: km > 0 && km < 1000 ? km : null,
+    place: str(x.place).slice(0, 100), url: /^https?:\/\//i.test(str(x.url)) ? str(x.url).slice(0, 500) : '', note: str(x.note).slice(0, 300), _feed: true };
+}
+const EventFeed = {
+  isEnabled(settings) { const f = settings && settings.eventFeed; return !!(f && f.enabled === true && f.consent && f.consent.at); },
+  validateUrl(u) { try { const x = new URL(String(u || '').trim()); return x.protocol === 'https:' ? x.href : null; } catch (e) { return null; } },
+  /* 取得したJSONを検証して整える。形式が違えば null */
+  parse(json) {
+    if (!isObj(json) || !Array.isArray(json.events)) return null;
+    const events = json.events.slice(0, CONFIG.eventFeed.maxEvents).map(sanitizeFeedEvent).filter(Boolean);
+    return { events, updatedAt: isValidDate(json.updatedAt) ? json.updatedAt : '', rejected: json.events.length - events.length };
+  },
+  cache() { try { const c = JSON.parse(localStorage.getItem(CONFIG.eventFeed.cacheKey) || 'null'); return isObj(c) && Array.isArray(c.events) ? c : null; } catch (e) { return null; } },
+  saveCache(c) { try { localStorage.setItem(CONFIG.eventFeed.cacheKey, JSON.stringify(c)); } catch (e) { /* 無視 */ } },
+  clearCache() { try { localStorage.removeItem(CONFIG.eventFeed.cacheKey); } catch (e) { /* 無視 */ } },
+  /* 照合に使える取得済みの大会（オフ、またはURLが違うときは空） */
+  entries(settings) {
+    if (!EventFeed.isEnabled(settings)) return [];
+    const c = EventFeed.cache(), u = EventFeed.validateUrl(settings.eventFeed.url);
+    return c && u && c.url === u ? c.events : [];
+  },
+  async fetchFeed(settings) {
+    if (!EventFeed.isEnabled(settings)) throw new Error('disabled');
+    const url = EventFeed.validateUrl(settings.eventFeed.url); if (!url) throw new Error('nourl');
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), CONFIG.eventFeed.timeoutMs);
+    try {
+      const r = await fetch(url, { signal: ctl.signal, credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer' });
+      if (!r.ok) throw new Error('http ' + r.status);
+      const text = await r.text(); if (text.length > CONFIG.eventFeed.maxBytes) throw new Error('toolarge');
+      let json; try { json = JSON.parse(text); } catch (e) { throw new Error('format'); }
+      const p = EventFeed.parse(json); if (!p) throw new Error('format');
+      const c = { url, fetchedAt: Date.now(), updatedAt: p.updatedAt, events: p.events }; EventFeed.saveCache(c); return c;
+    } finally { clearTimeout(timer); }
+  }
+};
+
+/* ---------------------------------------------------------------
+   イベント名からの自動入力
+   --------------------------------------------------------------- */
+function normName(s) {
+  return String(s == null ? '' : s).normalize('NFKC').toLowerCase()
+    .replace(/第\s*\d+\s*回/g, '').replace(/(19|20)\d\d\s*年?/g, '')
+    .replace(/[\s　・\-_/()（）【】「」『』.,、。]/g, '');
+}
+function suggestNames(history, extra) {
+  const seen = new Set(), out = [];
+  EVENT_CATALOG.map(c => c.name).concat((extra || []).map(c => c.name), (history || []).map(e => e.name)).forEach(n => { if (n && !seen.has(n) && out.length < CONFIG.eventFeed.suggestMax) { seen.add(n); out.push(n); } });
+  return out;
+}
+/* 名前が一致したときの入力内容。過去の自分の大会（履歴）とカタログを合わせて使う */
+function lookupEvent(input, history, today, selfId, extra) {
+  const n = normName(input); if (n.length < 2) return null;
+  const hist = (history || []).filter(e => e.id !== selfId && normName(e.name) === n).sort((a, b) => (a.date < b.date ? 1 : -1))[0] || null;
+  const cat = (extra || []).concat(EVENT_CATALOG).find(c => [c.name].concat(c.aliases || []).some(x => normName(x) === n)) || null;
+  if (!hist && !cat) return null;
+  const f = { date: null, startTime: '', type: null, distanceKm: null, place: '' }, notes = [];
+  let url = '', label = '';
+  if (cat) {
+    label = cat.name; url = cat.url || ''; f.type = cat.type; f.place = cat.place || ''; f.startTime = cat.startTime || '';
+    if (isValidDate(cat.date) && cat.date >= today) f.date = cat.date; else notes.push('次回の開催日は未登録です。');
+    if (!cat.startTime) notes.push('スタート時刻は未登録です。');
+    if (cat._feed) notes.push('取得した大会情報から入力しました。');
+    if (cat.note) notes.push(cat.note);
+  }
+  if (hist) {
+    label = label || hist.name;
+    if (!f.type) { f.type = hist.type; f.distanceKm = hist.distanceKm; }
+    if (!f.place) f.place = hist.place || '';
+    if (!f.startTime) f.startTime = hist.startTime || '';
+    if (!f.date) notes.push('前回の登録は ' + fmtFull(hist.date) + ' です。今回の開催日を入力してください。');
+  }
+  return { label, fields: f, notes, url };
+}
+
+/* ---------------------------------------------------------------
+   結果・振り返り
+   --------------------------------------------------------------- */
+function lapAnalysis(ev, res) {
+  const km = eventKm(ev);
+  if (!(km > 0) || !res || res.status !== 'finished' || !(res.finishSec > 0)) return null;
+  const goalPace = ev.goalSec > 0 ? ev.goalSec / km : null;
+  const inner = (res.splits || []).filter(s => s.km > 0 && s.km < km && s.sec > 0 && s.sec < res.finishSec);
+  const pts = [{ km: 0, sec: 0 }].concat(inner, [{ km, sec: res.finishSec }]);
+  const rows = [];
+  for (let i = 1; i < pts.length; i++) {
+    const dk = pts[i].km - pts[i - 1].km, ds = pts[i].sec - pts[i - 1].sec;
+    if (dk <= 0 || ds <= 0) continue;
+    const pace = ds / dk;
+    rows.push({ fromKm: pts[i - 1].km, toKm: pts[i].km, cumSec: pts[i].sec, segSec: ds, paceSec: pace, diffSec: goalPace != null ? pace - goalPace : null });
+  }
+  let halves = null;
+  if (inner.length) {
+    const half = km / 2; let tHalf = null;
+    for (let i = 1; i < pts.length; i++) {
+      if (pts[i].km >= half) { const a = pts[i - 1], b = pts[i]; tHalf = a.sec + (b.sec - a.sec) * (half - a.km) / (b.km - a.km); break; }
+    }
+    if (tHalf != null && tHalf > 0) { const second = res.finishSec - tHalf; halves = { firstSec: tHalf, secondSec: second, diffSec: second - tHalf, ratio: (second - tHalf) / tHalf }; }
+  }
+  const delta = ev.goalSec > 0 ? { sec: res.finishSec - ev.goalSec, achieved: res.finishSec <= ev.goalSec, ratio: (res.finishSec - ev.goalSec) / ev.goalSec } : null;
+  return { avgPaceSec: res.finishSec / km, goalPaceSec: goalPace, rows, halves, delta, hasSplits: inner.length > 0 };
+}
+function trainingSummary(ev, workouts) {
+  const list = workouts.filter(w => w.eventId === ev.id && w.date < ev.date && w.type !== 'rest' && w.type !== 'race');
+  if (!list.length) return null;
+  const sum = a => a.reduce((x, y) => x + y, 0);
+  const done = list.filter(w => w.done), plannedKm = sum(list.map(w => w.distanceKm || 0)), doneKm = sum(done.map(recordKm));
+  const first = list.map(w => w.date).sort()[0], weeks = Math.max(1, Math.ceil((dayNum(ev.date) - dayNum(first)) / 7));
+  const byWeek = {}; done.forEach(w => { const k = mondayOf(w.date); byWeek[k] = (byWeek[k] || 0) + recordKm(w); });
+  return { plannedKm, doneKm, rate: plannedKm > 0 ? doneKm / plannedKm : null, runs: done.length, plannedRuns: list.length, weeks,
+    avgWeekKm: doneKm / weeks, peakWeekKm: Math.max.apply(null, [0].concat(Object.keys(byWeek).map(k => byWeek[k]))), longestKm: Math.max.apply(null, [0].concat(done.map(recordKm))) };
+}
+function reviewInsights(an, tr) {
+  const T = TEXT.review.insights, C = CONFIG.review, out = [];
+  if (an && an.delta) out.push(an.delta.achieved ? T.achieved : (an.delta.ratio <= C.nearRatio ? T.near : T.miss));
+  if (an && an.halves) {
+    const r = an.halves.ratio;
+    out.push(r > C.fadeRatio ? T.fade : r > C.evenRatio ? T.mildFade : r < -C.evenRatio ? T.negative : T.even);
+  }
+  if (tr && tr.rate != null && tr.rate < C.lowRateRatio) out.push(T.lowRate);
+  return out;
+}
+function resultKey(ev) { const k = eventKm(ev); return k ? String(Math.round(k * 10) / 10) : null; }
+/* 自己ベスト情報：同じ距離の完走記録を日付順に見て、更新したか・現在のベストかを返す */
+function pbInfo(events) {
+  const fin = events.filter(e => e.result && e.result.status === 'finished' && e.result.finishSec > 0 && resultKey(e)).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const best = {}, out = {};
+  fin.forEach(e => {
+    const k = resultKey(e), prev = best[k];
+    out[e.id] = { isFirst: prev == null, isUpdate: prev != null && e.result.finishSec < prev };
+    best[k] = prev == null ? e.result.finishSec : Math.min(prev, e.result.finishSec);
+  });
+  fin.forEach(e => { out[e.id].isBest = e.result.finishSec === best[resultKey(e)]; });
+  return out;
+}
+/* 次の大会に引き継ぐ「課題・次回に向けて」。同じくらいの距離の大会を優先 */
+function lessonsFor(ev, events) {
+  const b = bucketOf(eventKm(ev) || 0);
+  return events.filter(e => e.id !== ev.id && e.date < ev.date && e.result && (e.result.improve || e.result.next))
+    .sort((a, b2) => { const sa = bucketOf(eventKm(a) || 0) === b ? 1 : 0, sb = bucketOf(eventKm(b2) || 0) === b ? 1 : 0; return sb - sa || (a.date < b2.date ? 1 : -1); })
+    .slice(0, CONFIG.review.lessonCount).map(e => ({ name: e.name, date: e.date, improve: e.result.improve, next: e.result.next }));
+}
+
+/* ---------------------------------------------------------------
+   練習メニューの取り込み・書き出し・作成の補助
+   （自動生成とは別の入口。どちらも同じ「練習の記録」に入る）
+   --------------------------------------------------------------- */
+const WD_JA = ['日', '月', '火', '水', '木', '金', '土'];
+const MENU_ALIASES = [
+  [/リカバリ|回復|recovery/i, 'recovery'], [/ロング|lsd|long/i, 'lsd'], [/流し|ストライド|stride/i, 'strides'],
+  [/インターバル|interval/i, 'interval'], [/テンポ|ペース走|tempo/i, 'tempo'], [/(^|[^a-z])mp([^a-z]|$)|マラソンペース/i, 'mp'],
+  [/ジョグ|jog/i, 'jog'], [/休|オフ|rest|off/i, 'rest'], [/レース|大会|本番|race/i, 'race']
+];
+function menuTypeFromText(t) {
+  const s = norm(String(t == null ? '' : t)).trim(); if (!s) return null;
+  if (CONFIG.menuTypes[s.toLowerCase()]) return s.toLowerCase();
+  for (const k of Object.keys(CONFIG.menuTypes)) if (CONFIG.menuTypes[k] === s) return k;
+  for (const a of MENU_ALIASES) if (a[0].test(s)) return a[1];
+  return null;
+}
+function isQuality(type) { return CONFIG.menu.qualityTypes.indexOf(type) >= 0; }
+
+/* 日付：YYYY-MM-DD / YYYY/M/D / M/D / M月D日。年が無いときは、大会日以前でいちばん近い年にする */
+function normMenuDate(s, eventDate) {
+  const t = norm(String(s == null ? '' : s)).trim().replace(/[年月\/.]/g, '-').replace(/日$/, '').replace(/日/g, '');
+  let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t);
+  if (m) { const d = m[1] + '-' + pad(+m[2]) + '-' + pad(+m[3]); return isValidDate(d) ? d : null; }
+  m = /^(\d{1,2})-(\d{1,2})$/.exec(t); if (!m) return null;
+  const ref = isValidDate(eventDate) ? eventDate : todayStr(); let y = +ref.slice(0, 4);
+  let d = y + '-' + pad(+m[1]) + '-' + pad(+m[2]); if (!isValidDate(d)) return null;
+  if (d > ref) { y -= 1; d = y + '-' + pad(+m[1]) + '-' + pad(+m[2]); if (!isValidDate(d)) return null; }
+  return d;
+}
+/* 距離・ペース・時間を整える（ペースが無ければ、種類と基準ペースから自動で入れる） */
+function finishItem(it, basePaceSec) {
+  const o = Object.assign({}, it);
+  if (o.type === 'rest') { o.distanceKm = null; o.paceSec = null; o.durationSec = null; return o; }
+  if (!(o.paceSec > 0)) o.paceSec = paceFor(o.type, basePaceSec);
+  if (o.distanceKm > 0 && o.paceSec > 0) o.durationSec = Math.round(o.distanceKm * o.paceSec); else o.durationSec = null;
+  return o;
+}
+function cleanItem(r, eventDate, basePaceSec) {
+  const date = normMenuDate(r.date, eventDate); if (!date) return { error: '日付を読み取れません' };
+  const type = menuTypeFromText(r.type); if (!type) return { error: '種類「' + str(String(r.type == null ? '' : r.type)).slice(0, 12) + '」が分かりません' };
+  let km = null; const kr = String(r.km == null ? '' : r.km).trim();
+  if (kr !== '') { km = parseKm(kr.replace(/キロ$/, '')); if (km == null) return { error: '距離「' + kr.slice(0, 10) + '」を読み取れません' }; }
+  let pace = null; const pr = String(r.pace == null ? '' : r.pace).trim();
+  if (pr !== '') { pace = parsePace(pr.replace(/\/km$/i, '')); if (pace == null) return { error: 'ペース「' + pr.slice(0, 10) + '」を読み取れません' }; }
+  const lim = (x, n) => str(typeof x === 'number' ? String(x) : x).trim().slice(0, n);
+  return { item: finishItem({ date, type, distanceKm: type === 'rest' ? null : km, paceSec: pace, durationSec: null, memo: lim(r.note, 200), strength: lim(r.strength, 200), phase: lim(r.phase, 20) }, basePaceSec) };
+}
+const WD_KEYS = { '日': 0, '月': 1, '火': 2, '水': 3, '木': 4, '金': 5, '土': 6 };
+function sanitizeMenu(m) {
+  m = isObj(m) ? m : {}; const care = isObj(m.care) ? m.care : {}, wk = isObj(care.weekly) ? care.weekly : {}, weekly = {};
+  Object.keys(wk).forEach(k => { const i = WD_KEYS[k] != null ? WD_KEYS[k] : (/^[0-6]$/.test(k) ? +k : -1); const v = str(wk[k]).trim().slice(0, 100); if (i >= 0 && v) weekly[i] = v; });
+  const exercises = (Array.isArray(care.exercises) ? care.exercises : []).filter(isObj).slice(0, 30).map(x => ({ name: str(x.name).trim().slice(0, 40), detail: str(x.detail).trim().slice(0, 60), how: str(x.how).trim().slice(0, 300) })).filter(x => x.name);
+  return { name: str(m.name).trim().slice(0, 60), care: { weekly, exercises } };
+}
+function parseMenu(text, opts) {
+  opts = opts || {}; const ev = opts.eventDate, base = opts.basePaceSec, errors = [], warnings = [];
+  const raw = String(text == null ? '' : text).replace(/^﻿/, '').trim();
+  if (!raw) return { error: '内容が空です。' };
+  let rows = [], meta = sanitizeMenu({});
+  if (raw[0] === '{' || raw[0] === '[') {
+    let j; try { j = JSON.parse(raw); } catch (e) { return { error: 'JSONとして読み込めませんでした（カンマや引用符を確認してください）。' }; }
+    if (isObj(j)) {
+      if (j.app && j.app !== 'running-event-menu') return { error: 'このアプリの練習メニュー形式ではありません。' };
+      if (j.version && j.version > CONFIG.menu.version) return { error: 'より新しい形式のメニューです。アプリを更新してください。' };
+      meta = sanitizeMenu(j); rows = Array.isArray(j.days) ? j.days : null;
+    } else rows = j;
+    if (!Array.isArray(rows)) return { error: '「days」（日ごとの配列）が見つかりません。' };
+    rows = rows.map((r, i) => isObj(r) ? { n: i + 1, date: r.date, type: r.type, km: r.km != null ? r.km : r.distanceKm, pace: r.pace, note: r.note != null ? r.note : r.memo, strength: r.strength, phase: r.phase } : { n: i + 1, bad: true });
+  } else {
+    const lines = raw.split(/\r?\n/);
+    lines.forEach((ln, i) => {
+      const t = ln.trim(); if (!t || t[0] === '#') return;
+      const c = t.split(/\t|,|，|、/).map(x => x.trim());
+      if (i === 0 && !normMenuDate(c[0], ev) && /日付|date/i.test(c[0])) return;
+      rows.push({ n: i + 1, date: c[0], type: c[1], km: c[2], note: c[3], strength: c[4], phase: c[5], pace: c[6] });
+    });
+  }
+  if (rows.length > CONFIG.menu.maxDays) return { error: '日数が多すぎます（' + CONFIG.menu.maxDays + '日まで）。' };
+  const items = [], seen = new Set(); let after = 0, dup = 0;
+  rows.forEach(r => {
+    if (r.bad) { errors.push({ n: r.n, msg: '行の形式が正しくありません' }); return; }
+    const c = cleanItem(r, ev, base); if (c.error) { errors.push({ n: r.n, msg: c.error }); return; }
+    const it = c.item;
+    if (isValidDate(ev) && it.date > ev) { after++; return; }
+    if (seen.has(it.date)) { dup++; return; }
+    seen.add(it.date); items.push(it);
+  });
+  if (after) warnings.push('大会日より後の ' + after + ' 日分は除外しました。');
+  if (dup) warnings.push('同じ日付が重複している ' + dup + ' 日分は、最初の1件だけを使います。');
+  if (!items.length) return { error: '取り込める練習の行がありませんでした。' + (errors[0] ? '（例：' + errors[0].n + '行目 ' + errors[0].msg + '）' : '') };
+  items.sort((a, b) => (a.date < b.date ? -1 : 1));
+  const total = items.reduce((a, x) => a + (x.distanceKm || 0), 0);
+  return { items, meta, errors: errors.slice(0, 30), errorCount: errors.length, warnings, summary: { days: items.length, from: items[0].date, to: items[items.length - 1].date, totalKm: Math.round(total * 10) / 10, weeks: menuWeeks(items).length } };
+}
+/* 週ごとにまとめる（週の合計・時期・「回復週」の目印） */
+function menuWeeks(items) {
+  const map = {}; items.forEach(it => { const k = mondayOf(it.date); (map[k] = map[k] || []).push(it); });
+  const keys = Object.keys(map).sort(); let prev = null;
+  return keys.map(k => {
+    const days = map[k].slice().sort((a, b) => (a.date < b.date ? -1 : 1)), km = Math.round(days.reduce((a, x) => a + (x.distanceKm || 0), 0) * 10) / 10;
+    const phase = (days.find(x => x.phase) || {}).phase || '';
+    const hasRace = days.some(x => x.type === 'race');
+    const recovery = !hasRace && prev != null && prev > 0 && km > 0 && km <= prev * CONFIG.menu.recoveryTagRatio;
+    prev = km; return { start: k, days, km, phase, recovery };
+  });
+}
+/* 種類ごとのペースの目安（基準ペース＝大会の目標ペース） */
+function menuLegend(basePaceSec) {
+  return ['jog', 'recovery', 'lsd', 'tempo', 'mp', 'interval', 'strides'].map(t => ({ type: t, label: CONFIG.menuTypes[t], paceSec: paceFor(t, basePaceSec), hint: TEXT.menu.typeHints[t] || '' }));
+}
+function careLine(menu, date) { const w = menu && menu.care && menu.care.weekly; return (w && w[weekdayOf(date)]) || ''; }
+/* ある週の並びを別の週へコピー（日付だけずらす。完了・実績は持ち越さない） */
+function copyWeek(items, fromMonday, toMonday, basePaceSec) {
+  const diff = dayNum(toMonday) - dayNum(fromMonday);
+  return items.filter(x => mondayOf(x.date) === fromMonday).map(x => finishItem(Object.assign({}, x, { date: fromDayNum(dayNum(x.date) + diff), paceSec: null }), basePaceSec));
+}
+function workoutsToItems(workouts, eventId) {
+  return workouts.filter(w => w.eventId === eventId).map(w => ({ date: w.date, type: w.type, distanceKm: w.distanceKm, paceSec: w.paceSec, durationSec: w.durationSec, memo: w.memo || '', strength: w.strength || '', phase: w.phase || '' }))
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+function exportMenu(items, menu, name) {
+  const m = sanitizeMenu(menu);
+  return { app: 'running-event-menu', version: CONFIG.menu.version, name: name || m.name || '', exportedAt: new Date().toISOString(),
+    days: items.slice().sort((a, b) => (a.date < b.date ? -1 : 1)).map(x => { const o = { date: x.date, type: x.type }; if (x.distanceKm > 0) o.km = x.distanceKm; if (x.memo) o.note = x.memo; if (x.strength) o.strength = x.strength; if (x.phase) o.phase = x.phase; return o; }),
+    care: { weekly: Object.keys(m.care.weekly).reduce((a, i) => { a[WD_JA[i]] = m.care.weekly[i]; return a; }, {}), exercises: m.care.exercises } };
+}
+
+return { parseMenu, exportMenu, menuWeeks, menuLegend, careLine, copyWeek, finishItem, workoutsToItems, menuTypeFromText, isQuality, sanitizeMenu, normMenuDate, WD_JA, EventFeed, EVENT_CATALOG, normName, suggestNames, lookupEvent, lapAnalysis, trainingSummary, reviewInsights, pbInfo, lessonsFor, CONFIG, TEXT, pad, dayNum, fromDayNum, isValidDate, weekdayOf, todayStr, addDays, daysUntil, fmtMD, fmtFull, mondayOf,
+  parseKm, parsePace, parseDuration, formatPace, formatDuration, formatKm, solveTriad, eventKm, basePace, paceFor, predictSec, bucketOf,
+  generatePlan, mergePlan, fuelPlan, hydrationPlan, wearAdvice, tempFromWeather, raceDuration, timeAddHours, dayAdvice,
+  shoeTotalKm, shoeLastUsed, shoeStatus, shoeTrainingKm, raceShoeChecks, recordKm, Weather,
+  sanitizeState, sanitizeData, sanitizeSettings, exportData, parseImport };
+})();
+if (typeof module !== 'undefined' && module.exports) module.exports = RE;
+
+</script>
+<script>
+/* =====================================================================
+   画面層（DOM操作はここだけ。計算・判定は上の RE のロジック関数を呼ぶ）
+   ===================================================================== */
+(function () {
+'use strict';
+const CFG = RE.CONFIG, TX = RE.TEXT, W = RE.Weather, EF = RE.EventFeed;
+const $ = s => document.querySelector(s);
+/* フォーム部品を f.name の形で参照するための補助（form.elements 経由なので環境に依存しない） */
+const fm = sel => { const form = document.querySelector(sel); if (!form) return null; return new Proxy({}, { get: (_, k) => { const el = form.elements.namedItem(k); if (el) return el; const v = form[k]; return typeof v === 'function' ? v.bind(form) : v; } }); };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const opt = (v, label, sel) => '<option value="' + esc(v) + '"' + (String(v) === String(sel == null ? '' : sel) ? ' selected' : '') + '>' + esc(label) + '</option>';
+const paceTxt = sec => sec > 0 ? RE.formatPace(sec) + '/km' : '';
+
+let S = null;
+let ui = { tab: 'home', weekStart: RE.mondayOf(RE.todayStr()) };
+let sheetRefresh = null;
+const placeBoxes = {};
+
+/* ---------------- 保存・読み込み ---------------- */
+function save() {
+  try { localStorage.setItem(CFG.storageKey, JSON.stringify(S)); return true; }
+  catch (e) { toast('保存できませんでした（ブラウザの保存容量や設定を確認してください）。'); return false; }
+}
+function load() {
+  let raw = null;
+  try { raw = localStorage.getItem(CFG.storageKey); } catch (e) { raw = null; }
+  if (raw) { try { S = RE.sanitizeState(JSON.parse(raw)); return; } catch (e) { /* 壊れていたらサンプルに戻す */ } }
+  S = seed(); syncShoePacking(); save();
+}
+function seed() {
+  const t = RE.todayStr(), evDate = RE.addDays(t, 84);
+  const st = RE.sanitizeState({});
+  st.shoes = [
+    { id: 's_sample1', name: 'サンプル：デイリートレーナー', brand: '', use: 'training', purchaseDate: t, initialKm: 120, limitKm: 600, status: 'active', memo: 'これはサンプルです。編集・削除できます。' },
+    { id: 's_sample2', name: 'サンプル：レース用シューズ', brand: '', use: 'race', purchaseDate: t, initialKm: 0, limitKm: 500, status: 'active', memo: '大会で履く想定のサンプル。' }
+  ];
+  const ev = { id: 'e_sample', name: 'サンプル：ハーフマラソン', date: evDate, type: 'half', distanceKm: 21.0975, goalSec: 7200, place: '', placeGeo: null, startTime: '09:00', shoeId: 's_sample2', weather: null, result: null };
+  st.events = [ev]; st.currentEventId = ev.id;
+  const plan = RE.generatePlan({ startDate: t, eventDate: evDate, distanceKm: ev.distanceKm, goalSec: ev.goalSec, level: 'intermediate', daysPerWeek: 3, currentWeeklyKm: 15 });
+  st.workouts = plan.error ? [] : RE.mergePlan([], plan.items, ev.id, true, () => uid('w'), 's_sample1').workouts;
+  st.dayItems = [
+    { id: uid('d'), eventId: ev.id, time: '06:00', title: '朝食（サンプル）', memo: '' },
+    { id: uid('d'), eventId: ev.id, time: '07:30', title: '移動（サンプル）', memo: '' },
+    { id: uid('d'), eventId: ev.id, time: '09:00', title: 'スタート', memo: '' }
+  ];
+  st.packing = [
+    { id: uid('p'), eventId: ev.id, text: 'ゼッケン・参加案内', checked: false, auto: null },
+    { id: uid('p'), eventId: ev.id, text: '補給食（練習で試したもの）', checked: false, auto: null }
+  ];
+  st.settings = RE.sanitizeSettings({}); st.settings.defaultShoeId = 's_sample1';
+  return st;
+}
+const cur = () => S.events.find(e => e.id === S.currentEventId) || S.events[0] || null;
+function syncShoePacking() {
+  S.events.forEach(ev => {
+    const old = S.packing.find(p => p.eventId === ev.id && p.auto === 'shoe');
+    S.packing = S.packing.filter(p => !(p.eventId === ev.id && p.auto === 'shoe'));
+    const sh = ev.shoeId && S.shoes.find(s => s.id === ev.shoeId);
+    if (sh) S.packing.unshift({ id: old ? old.id : uid('p'), eventId: ev.id, text: 'シューズ：' + sh.name, checked: old ? old.checked : false, auto: 'shoe' });
+  });
+}
+
+/* ---------------- 共通の部品 ---------------- */
+let toastTimer = null;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 4000); }
+function openSheet(title, html, refresh) {
+  $('#sheet').innerHTML = '<div class="sheet-back" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="' + esc(title) + '">' +
+    '<div class="sheet-head"><h2>' + esc(title) + '</h2><button type="button" class="btn ghost" data-act="closeSheet" aria-label="閉じる">✕ 閉じる</button></div><div class="sheet-body">' + html + '</div></div>';
+  $('#sheet').hidden = false; document.body.classList.add('modal-open');
+  sheetRefresh = refresh || null; if (sheetRefresh) sheetRefresh(null);
+}
+function closeSheet() { $('#sheet').hidden = true; $('#sheet').innerHTML = ''; document.body.classList.remove('modal-open'); sheetRefresh = null; }
+function shoeOptions(selId, allowRetiredSel) {
+  let h = opt('', '未選択', selId);
+  S.shoes.filter(s => s.status !== 'retired' || (allowRetiredSel && s.id === selId)).forEach(s => { h += opt(s.id, s.name, selId); });
+  return h;
+}
+const noteFor = w => w ? (w.source === 'auto' ? '自動取得' : '手入力') : '';
+function dtTxt(ms) { const d = new Date(ms); return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' + RE.pad(d.getHours()) + ':' + RE.pad(d.getMinutes()); }
+function wxSummary(w) {
+  if (!w) return '';
+  const parts = [];
+  if (w.temp != null) parts.push(w.temp + '℃'); else if (w.level) parts.push(CFG.levelTempLabels[w.level]);
+  if (w.sky) parts.push(CFG.skyLabels[w.sky]); if (w.wind) parts.push('風：' + CFG.windLabels[w.wind]);
+  return parts.join('・');
+}
+function wxMeta(w) {
+  if (!w || !w.source) return '';
+  return (w.source === 'auto' ? '🛰 自動取得' : '✍ 手入力') + (w.at ? '（' + dtTxt(w.at) + '）' : '');
+}
+function numParse(s) { const t = String(s == null ? '' : s).replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/[−ー－]/g, '-').replace(/．/g, '.').trim(); if (t === '') return null; const v = parseFloat(t); return isNaN(v) ? null : v; }
+
+/* 天気入力欄（手入力が基本。自動取得はオンのときだけボタンが出る） */
+function wxFetchRow(date) {
+  if (!W.isEnabled(S.settings)) return '';
+  const r = W.range(date);
+  return r.ok ? '<button type="button" class="btn small" data-act="fetchWx">🛰 天気を取得</button><span class="xs muted"> 取得結果は入力欄に入ります。確認して修正できます。</span>' : '<p class="small muted">' + esc(r.message) + '</p>';
+}
+function wxFields(w, kind, date, start, noFetch) {
+  w = w || {};
+  return '<div class="wxbox" data-kind="' + kind + '" data-date="' + esc(date) + '" data-start="' + esc(start || '') + '" data-src="' + esc(w.source || '') + '" data-at="' + (w.at || '') + '">' +
+    '<div class="grid3"><label>気温(℃)<input name="wx_temp" inputmode="decimal" value="' + (w.temp == null ? '' : esc(w.temp)) + '" placeholder="例 12"></label>' +
+    '<label>天気<select name="wx_sky">' + opt('', '未選択', w.sky) + Object.keys(CFG.skyLabels).map(k => opt(k, CFG.skyLabels[k], w.sky)).join('') + '</select></label>' +
+    '<label>風<select name="wx_wind">' + opt('', '未選択', w.wind) + Object.keys(CFG.windLabels).map(k => opt(k, CFG.windLabels[k], w.wind)).join('') + '</select></label></div>' +
+    '<label>気温がわからないときの簡易選択<select name="wx_level">' + opt('', '選ばない', w.level) + Object.keys(CFG.levelTempLabels).map(k => opt(k, CFG.levelTempLabels[k], w.level)).join('') + '</select></label>' +
+    '<p class="xs muted" data-role="meta">' + esc(wxMeta(w)) + '</p><div data-role="fetch">' + (noFetch ? '' : wxFetchRow(date)) + '</div></div>';
+}
+function readWx(root) {
+  const box = (root || document).querySelector('.wxbox'); if (!box) return null;
+  const q = n => box.querySelector('[name=' + n + ']').value;
+  const temp = numParse(q('wx_temp')), sky = q('wx_sky') || null, wind = q('wx_wind') || null, level = q('wx_level') || null;
+  if (temp == null && !sky && !wind && !level) return null;
+  return RE.sanitizeData({ events: [{ id: 'x', date: RE.todayStr(), weather: { temp, sky, wind, level, source: box.dataset.src || 'manual', at: +box.dataset.at || Date.now() } }] }).events[0].weather;
+}
+async function doFetchWx(btn) {
+  const box = btn.closest('.wxbox'); if (!box || !W.isEnabled(S.settings)) return;
+  const kind = box.dataset.kind, ev = cur();
+  const geo = kind === 'event' ? (ev && ev.placeGeo) : S.settings.homeLocation;
+  const meta = box.querySelector('[data-role=meta]');
+  if (!geo) { meta.textContent = kind === 'event' ? '開催場所の地名を検索して選んでください（大会の編集画面）。手入力もできます。' : '「よく走る場所」を設定画面で選んでください。手入力もできます。'; return; }
+  const hasManual = box.dataset.src === 'manual' && ['wx_temp', 'wx_sky', 'wx_wind', 'wx_level'].some(n => box.querySelector('[name=' + n + ']').value);
+  if (hasManual && !confirm('手入力した値があります。自動取得の結果で置き換えますか？')) return;
+  btn.disabled = true; meta.textContent = '取得中…';
+  try {
+    const r = await W.fetchDay(geo, box.dataset.date, { startTime: kind === 'event' ? box.dataset.start : '' }, S.settings);
+    box.querySelector('[name=wx_temp]').value = r.temp; box.querySelector('[name=wx_sky]').value = r.sky; box.querySelector('[name=wx_wind]').value = r.wind; box.querySelector('[name=wx_level]').value = '';
+    box.dataset.src = 'auto'; box.dataset.at = r.fetchedAt; meta.textContent = wxMeta({ source: 'auto', at: r.fetchedAt }) + (r.cached ? '（保存済みの結果）' : '');
+    if (sheetRefresh) sheetRefresh(null);
+  } catch (e) { meta.textContent = '取得できませんでした。手入力できます。'; }
+  btn.disabled = false;
+}
+
+/* 地名検索の部品（天気の自動取得がオンのときだけ表示） */
+function placeBoxHtml(id, geo, onPick) {
+  placeBoxes[id] = { geo, results: [], onPick };
+  if (!W.isEnabled(S.settings)) return '<p class="small muted">天気の自動取得をオンにすると、地名から予報を取得できます（設定画面）。</p>';
+  return '<div class="placebox" data-id="' + id + '"><div class="row"><label>地名で検索<input name="' + id + '_q" placeholder="例：神戸"></label><button type="button" class="btn" data-act="placeSearch">検索</button></div>' +
+    '<button type="button" class="btn small" data-act="placeHere">📍 現在地を使う</button><div class="placeres"></div><p class="small" data-role="geo">' + (geo ? '選択中：' + esc(geo.name) : '未選択') + '</p></div>';
+}
+function placePicked(box, g) {
+  const pb = placeBoxes[box.dataset.id]; pb.geo = g; box.querySelector('[data-role=geo]').textContent = '選択中：' + g.name; box.querySelector('.placeres').innerHTML = '';
+  if (pb.onPick) pb.onPick(g);
+}
+async function placeSearch(btn) {
+  const box = btn.closest('.placebox'), res = box.querySelector('.placeres'), pb = placeBoxes[box.dataset.id];
+  res.innerHTML = '<p class="small">検索中…</p>';
+  try {
+    const list = await W.searchPlace(box.querySelector('input').value, S.settings); pb.results = list;
+    if (!list.length) { res.innerHTML = '<p class="small">見つかりませんでした。別の地名を試すか、手入力を使ってください。</p>'; return; }
+    if (list.length === 1) { placePicked(box, list[0]); return; }
+    res.innerHTML = list.map((r, i) => '<button type="button" class="btn small" data-act="placePick" data-i="' + i + '">' + esc(r.name + '（' + r.admin + '）') + '</button>').join('');
+  } catch (e) { res.innerHTML = '<p class="small">取得できませんでした。手入力できます。</p>'; }
+}
+async function placeHere(btn) {
+  const box = btn.closest('.placebox');
+  try { placePicked(box, await W.geolocate(S.settings)); } catch (e) { box.querySelector('.placeres').innerHTML = '<p class="small">現在地を取得できませんでした。地名を入力して検索してください。</p>'; }
+}
+
+/* ---------------- ホーム（大会） ---------------- */
+function eventCardHtml(ev) {
+  const d = RE.daysUntil(ev.date), km = RE.eventKm(ev);
+  const count = d > 0 ? 'あと ' + d + ' 日' : d === 0 ? '今日が大会です！' : '大会は終了しました';
+  const pace = (ev.goalSec > 0 && km) ? paceTxt(ev.goalSec / km) : '';
+  const sh = S.shoes.find(s => s.id === ev.shoeId);
+  return '<div class="card hero"><h2>' + esc(ev.name) + '</h2><p class="muted">' + esc(RE.fmtFull(ev.date)) + '</p><div class="count">' + count + '</div></div>' +
+    '<div class="card"><dl class="kv"><dt>種目</dt><dd>' + esc(CFG.eventTypes[ev.type].label) + (km ? '（' + RE.formatKm(km) + 'km）' : '') + '</dd>' +
+    '<dt>目標タイム</dt><dd>' + (ev.goalSec > 0 ? esc(RE.formatDuration(ev.goalSec)) : '未設定') + '</dd>' +
+    '<dt>目標ペース</dt><dd>' + (pace ? esc(pace) : '—') + '</dd>' +
+    '<dt>スタート</dt><dd>' + (ev.startTime ? esc(ev.startTime) : '未設定') + '</dd>' +
+    '<dt>開催場所</dt><dd>' + (ev.place ? esc(ev.place) : '未設定') + '</dd>' +
+    '<dt>大会のシューズ</dt><dd>' + (sh ? esc(sh.name) : '未設定') + '</dd></dl>' +
+    '<div class="btns"><button class="btn" data-act="editEvent" data-id="' + ev.id + '">編集</button>' +
+    '<button class="btn primary grow" data-act="openMenuHub">📅 練習メニューを設定</button></div></div>';
+}
+function signedTime(sec) {
+  const a = Math.abs(Math.round(sec)), hh = Math.floor(a / 3600), m = Math.floor(a % 3600 / 60), ss = a % 60;
+  return (sec < 0 ? '−' : '+') + (hh ? hh + ':' + RE.pad(m) : m) + ':' + RE.pad(ss);
+}
+function resultLine(ev) {
+  const r = ev.result; if (!r) return '';
+  if (r.status === 'dns') return '欠場'; if (r.status === 'dnf') return '途中棄権';
+  let t = RE.formatDuration(r.finishSec) || '記録なし';
+  if (ev.goalSec > 0 && r.finishSec > 0) t += '（目標比 ' + signedTime(r.finishSec - ev.goalSec) + (r.finishSec <= ev.goalSec ? '・達成' : '・未達') + '）';
+  return t;
+}
+function reviewHomeCard(ev) {
+  if (ev.result) return '<div class="card"><div class="row-between"><span><b>🏅 結果：</b>' + esc(resultLine(ev)) + '</span><button class="btn small" data-act="reviewOpen" data-id="' + ev.id + '">振り返りを見る</button></div></div>';
+  if (ev.date <= RE.todayStr()) return '<div class="card notice-info"><p><b>お疲れさまでした！</b> 結果を入力して振り返りましょう。</p><button class="btn primary" data-act="openResult" data-id="' + ev.id + '">📝 結果を入力する</button></div>';
+  return '';
+}
+function lessonsHtml(ev) {
+  const ls = RE.lessonsFor(ev, S.events); if (!ls.length) return '';
+  return '<div class="card notice-info"><h4>📝 これまでの振り返りから</h4><ul>' + ls.map(l => '<li><b>' + esc(l.name) + '（' + esc(RE.fmtFull(l.date)) + '）</b>' +
+    (l.improve ? '<div class="pre">課題：' + esc(l.improve) + '</div>' : '') + (l.next ? '<div class="pre">次回に向けて：' + esc(l.next) + '</div>' : '') + '</li>').join('') + '</ul></div>';
+}
+function viewHome() {
+  const ev = cur();
+  let h = '<div class="topbar"><h1>🏃 大会</h1><button class="btn small" data-act="newEvent">＋ 大会を追加</button></div>';
+  if (S.events.length > 1) h += '<label>表示する大会<select data-act-change="switchEvent">' + S.events.map(e => opt(e.id, e.name + '（' + RE.fmtMD(e.date) + '）', ev.id)).join('') + '</select></label>';
+  if (!ev) return h + '<div class="card center"><p>まだ大会がありません。</p><button class="btn primary" data-act="newEvent">大会を登録する</button></div>';
+  h += eventCardHtml(ev) + reviewHomeCard(ev) + lessonsHtml(ev);
+  RE.raceShoeChecks(ev, S.shoes, S.workouts).forEach(c => { h += '<div class="card notice-warn" role="alert">⚠️ ' + esc(c.text) + '</div>'; });
+  const today = RE.todayStr(), tw = S.workouts.filter(w => w.eventId === ev.id && w.date === today);
+  h += '<h3>今日の練習</h3>' + (tw.length ? tw.map(workoutCard).join('') : '<p class="muted small">今日の予定はありません。</p>');
+  h += '<div class="btns"><button class="btn" data-act="goTab" data-tab="train">練習スケジュールへ</button><button class="btn" data-act="goTab" data-tab="day">当日のスケジュールへ</button></div>';
+  h += '<p class="disclaimer">' + esc(TX.planDisclaimer) + '</p>';
+  return h;
+}
+let lastAuto = '', sheetEventId = null;
+/* イベント名が登録済み（カタログ／過去の自分の大会）と一致したら、開催日・スタート時刻などを入れる */
+function lookupAutofill(f, selfId) {
+  const n = f.name.value, key = RE.normName(n), note = $('#autoNote');
+  const r = RE.lookupEvent(n, S.events, RE.todayStr(), selfId, EF.entries(S.settings));
+  if (!r) { lastAuto = ''; note.innerHTML = ''; return; }
+  if (key === lastAuto) return;
+  lastAuto = key;
+  const x = r.fields, filled = [];
+  if (x.date) { f.date.value = x.date; filled.push('開催日 ' + RE.fmtFull(x.date)); }
+  if (x.startTime) { f.start.value = x.startTime; filled.push('スタート ' + x.startTime); }
+  if (x.type) { f.type.value = x.type; filled.push('種目 ' + CFG.eventTypes[x.type].label); if (x.type === 'fun' && x.distanceKm) f.dist.value = x.distanceKm; }
+  if (x.place && !f.place.value.trim()) { f.place.value = x.place; filled.push('開催場所 ' + x.place); }
+  note.innerHTML = '<div class="card notice-info" role="status"><p>ℹ️ 「' + esc(r.label) + '」の登録情報から入力しました。</p>' + (filled.length ? '<p class="small">' + esc(filled.join('／')) + '</p>' : '') +
+    r.notes.map(t => '<p class="small">' + esc(t) + '</p>').join('') + '<p class="small"><b>開催日・スタート時刻は変更されることがあります。公式サイトで必ず確認してください。</b></p>' +
+    (r.url ? '<p class="small"><a href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer">公式・参考ページを開く（外部サイト）</a></p>' : '') + '</div>';
+}
+function eventSheet(id) {
+  const isNew = !id, ev = isNew ? { id: null, name: '', date: RE.addDays(RE.todayStr(), 90), type: 'half', distanceKm: null, goalSec: null, place: '', placeGeo: null, startTime: '', shoeId: null } : S.events.find(e => e.id === id);
+  if (!ev) return;
+  const html = '<form id="ef" onsubmit="return false"><label>イベント名（入力すると、登録済みの大会の開催日・スタート時刻などが自動で入ります）<input name="name" list="evNames" autocomplete="off" value="' + esc(ev.name) + '" placeholder="例：神戸マラソン"></label>' +
+    '<datalist id="evNames">' + RE.suggestNames(S.events, EF.entries(S.settings)).map(n => '<option value="' + esc(n) + '"></option>').join('') + '</datalist><div id="feedRow">' + feedRowHtml() + '</div><div id="autoNote"></div>' +
+    '<label>開催日<input type="date" name="date" value="' + esc(ev.date) + '"></label>' +
+    '<label>種目<select name="type">' + Object.keys(CFG.eventTypes).map(k => opt(k, CFG.eventTypes[k].label, ev.type)).join('') + '</select></label>' +
+    '<label id="distBox">距離(km)<input name="dist" inputmode="decimal" value="' + (ev.type === 'fun' && ev.distanceKm ? esc(ev.distanceKm) : '') + '" placeholder="例：7.5"></label>' +
+    '<label>目標タイム（任意・時:分:秒）<input name="goal" inputmode="numeric" value="' + (ev.goalSec ? esc(RE.formatDuration(ev.goalSec)) : '') + '" placeholder="例：1:59:30"></label>' +
+    '<p class="small" id="paceOut"></p>' +
+    '<label>スタート時刻（任意）<input type="time" name="start" value="' + esc(ev.startTime) + '"></label>' +
+    '<label>開催場所（地名・任意）<input name="place" value="' + esc(ev.place) + '" placeholder="例：神戸市"></label>' +
+    placeBoxHtml('evplace', ev.placeGeo, null) +
+    '<label>大会で履くシューズ<select name="shoe">' + shoeOptions(ev.shoeId, true) + '</select></label>' +
+    '<div class="btns"><button class="btn primary grow" data-act="saveEvent" data-id="' + (id || '') + '">保存</button>' +
+    (isNew ? '' : '<button class="btn danger" data-act="deleteEvent" data-id="' + id + '">削除</button>') + '</div></form>';
+  lastAuto = ''; sheetEventId = id || null;
+  openSheet(isNew ? '大会を追加' : '大会を編集', html, e => {
+    const f = fm('#ef'); if (!f) return;
+    if (e && e.target && e.target.name === 'name') lookupAutofill(f, id);
+    $('#distBox').hidden = f.type.value !== 'fun';
+    const km = f.type.value === 'fun' ? RE.parseKm(f.dist.value) : CFG.eventTypes[f.type.value].km, g = RE.parseDuration(f.goal.value);
+    $('#paceOut').textContent = (km && g) ? '目標ペース：' + paceTxt(g / km) : '';
+  });
+}
+function saveEvent(id) {
+  const f = fm('#ef'); const name = f.name.value.trim() || '無題の大会';
+  if (!RE.isValidDate(f.date.value)) return toast('開催日を入力してください。');
+  const type = f.type.value; let km = CFG.eventTypes[type].km;
+  if (type === 'fun') { km = RE.parseKm(f.dist.value); if (!km) return toast('距離(km)を入力してください。'); }
+  let goal = null; if (f.goal.value.trim()) { goal = RE.parseDuration(f.goal.value); if (!goal) return toast('目標タイムの形式を確認してください（例：1:59:30）。'); }
+  const geoBox = placeBoxes.evplace, ev = id ? S.events.find(e => e.id === id) : { id: uid('e'), weather: null, result: null };
+  const oldPlace = ev.place;
+  Object.assign(ev, { name, date: f.date.value, type, distanceKm: km, goalSec: goal, startTime: f.start.value || '', place: f.place.value.trim(), shoeId: f.shoe.value || null });
+  if (geoBox && geoBox.geo && W.isEnabled(S.settings)) { ev.placeGeo = geoBox.geo; if (!ev.place) ev.place = geoBox.geo.name; }
+  else if (oldPlace !== ev.place && !geoBox.geo) ev.placeGeo = null;
+  if (!id) { S.events.push(ev); S.currentEventId = ev.id; }
+  syncShoePacking(); save(); closeSheet(); render();
+}
+function deleteEvent(id) {
+  const ev = S.events.find(e => e.id === id); if (!ev || !confirm('「' + ev.name + '」と、この大会の練習・当日の予定・持ち物を削除します。よろしいですか？')) return;
+  S.events = S.events.filter(e => e.id !== id);
+  ['workouts', 'dayItems', 'packing'].forEach(k => { S[k] = S[k].filter(x => x.eventId !== id); });
+  S.currentEventId = S.events[0] ? S.events[0].id : null; save(); closeSheet(); render();
+}
+
+/* ---------------- 計画の自動作成 ---------------- */
+function openPlanGen() {
+  const ev = cur(); if (!ev) return;
+  const km = RE.eventKm(ev), pp = S.planPrefs || {};
+  const html = '<form id="pf" onsubmit="return false"><p class="small">大会：' + esc(ev.name) + '（' + esc(RE.fmtMD(ev.date)) + '・' + RE.formatKm(km) + 'km）' + (ev.goalSec ? '／目標 ' + esc(RE.formatDuration(ev.goalSec)) : '') + '</p>' +
+    '<label>計画の開始日<input type="date" name="start" value="' + esc(pp.start && RE.isValidDate(pp.start) && pp.start >= RE.todayStr() ? pp.start : RE.todayStr()) + '"></label>' +
+    '<label>現在の走力レベル<select name="level">' + Object.keys(CFG.levels).map(k => opt(k, CFG.levels[k], pp.level || 'beginner')).join('') + '</select></label>' +
+    '<label>週に走れる日数<select name="days">' + [2, 3, 4, 5, 6].map(n => opt(n, n + '日', pp.days || 3)).join('') + '</select></label>' +
+    '<label>現在の週間走行距離(km)<input name="weekly" inputmode="decimal" value="' + esc(pp.weekly || '') + '" placeholder="例：15"></label>' +
+    (ev.goalSec ? '' : '<p class="small muted">目標タイムが未設定です。直近のタイムか走力レベルから基準ペースを推定します。</p>') +
+    '<label>直近のレース・テストのタイム（任意・時:分:秒）<input name="recent" inputmode="numeric" value="' + esc(pp.recent || '') + '" placeholder="例：0:52:30"></label>' +
+    '<label>そのときの距離<select name="recentKm">' + [['5', '5km'], ['10', '10km'], ['21.0975', 'ハーフ'], ['42.195', 'フル']].map(a => opt(a[0], a[1], pp.recentKm || '10')).join('') + '</select></label>' +
+    '<div class="btns"><button class="btn primary grow" data-act="previewPlan">内容を確認する</button></div></form><div id="planPreview"></div>';
+  openSheet('トレーニング計画の自動作成', html);
+}
+let pendingPlan = null;
+function previewPlan() {
+  const ev = cur(), f = fm('#pf'), out = $('#planPreview'); if (!ev) return;
+  const D = +f.days.value, weekly = numParse(f.weekly.value);
+  if (weekly == null || weekly < 0) return toast('現在の週間走行距離を入力してください（0以上の数字）。');
+  let recentSec = null; if (f.recent.value.trim()) { recentSec = RE.parseDuration(f.recent.value); if (!recentSec) return toast('直近タイムの形式を確認してください。'); }
+  S.planPrefs = { start: f.start.value, level: f.level.value, days: D, weekly: f.weekly.value, recent: f.recent.value, recentKm: f.recentKm.value }; save();
+  const res = RE.generatePlan({ startDate: f.start.value, eventDate: ev.date, distanceKm: RE.eventKm(ev), goalSec: ev.goalSec, level: f.level.value, daysPerWeek: D, currentWeeklyKm: weekly, recentSec, recentKm: +f.recentKm.value });
+  if (res.error) { pendingPlan = null; out.innerHTML = '<div class="card notice-danger" role="alert">⛔ ' + esc(res.error) + '</div>'; return; }
+  pendingPlan = res;
+  let h = '<h3>作成される計画（確認用）</h3>';
+  res.warnings.forEach(w => { h += '<div class="card notice-warn" role="alert">⚠️ ' + esc(w) + '</div>'; });
+  const phaseLabel = { base: 'ベース期', build: '強化期', taper: '調整期', race: '大会' };
+  const bp = res.basePace; h += '<p class="small">基準ペース：' + esc(paceTxt(bp.paceSec)) + '（' + (bp.source === 'goal' ? '目標タイムから' : bp.source === 'recent' ? '直近タイムから推定' : '走力レベルから推定') + '）</p>';
+  h += '<div class="card"><table class="pace-table"><thead><tr><th>週</th><th>開始</th><th>時期</th><th>距離</th></tr></thead><tbody>' +
+    res.weeks.map(w => '<tr><td>' + w.index + '</td><td>' + esc(RE.fmtMD(w.startDate)) + '</td><td>' + phaseLabel[w.phase] + (w.recovery ? '（軽め）' : '') + '</td><td class="num">' + RE.formatKm(w.volumeKm) + 'km</td></tr>').join('') + '</tbody></table></div>';
+  const first = res.items.filter(i => i.type !== 'rest').slice(0, 7);
+  h += '<h4>最初の練習</h4><div class="card"><ul>' + first.map(i => '<li>' + esc(RE.fmtMD(i.date)) + ' ' + CFG.menuTypes[i.type] + ' ' + RE.formatKm(i.distanceKm) + 'km ' + esc(paceTxt(i.paceSec)) + '</li>').join('') + '</ul></div>';
+  const existing = S.workouts.filter(w => w.eventId === ev.id).length;
+  h += '<label class="check"><input type="checkbox" id="ovw" checked> 自動作成済みで未完了の日を新しい計画に置き換える</label><p class="xs muted">手入力・編集した日と、完了済みの日は上書きしません。チェックを外すと、予定のない日にだけ追加します。' + (existing ? '（現在この大会の記録 ' + existing + '件）' : '') + '</p>';
+  h += '<div class="btns"><button class="btn primary grow" data-act="applyPlan">この計画を反映する</button></div><p class="disclaimer">' + esc(TX.planDisclaimer) + '</p>';
+  out.innerHTML = h; out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function applyPlan() {
+  const ev = cur(); if (!pendingPlan || !ev) return;
+  const r = RE.mergePlan(S.workouts, pendingPlan.items, ev.id, $('#ovw').checked, () => uid('w'), S.settings.defaultShoeId);
+  S.workouts = r.workouts; pendingPlan = null; save(); closeSheet();
+  ui.tab = 'train'; ui.weekStart = RE.mondayOf(RE.todayStr()); render(); toast(r.added + '日分を追加しました' + (r.skipped ? '（' + r.skipped + '日は既存の記録を優先）' : '') + '。');
+}
+
+/* ---------------- 練習メニュー（自動生成・取り込み・アプリ内で作成） ---------------- */
+const MTX = TX.menu;
+function evBase(ev) { const b = RE.basePace({ distanceKm: RE.eventKm(ev), goalSec: ev.goalSec, level: 'intermediate' }); return b ? b.paceSec : null; }
+function curMenu(ev) { return (S.menus && S.menus[ev.id]) || RE.sanitizeMenu({}); }
+function downloadText(name, text, mime) {
+  const blob = new Blob([text], { type: mime || 'application/json' }), a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function openMenuHub() {
+  const ev = cur(); if (!ev) return toast('まず大会を登録してください。');
+  const mine = S.workouts.filter(w => w.eventId === ev.id), n = k => mine.filter(w => w.source === k).length;
+  const html = '<p class="small">大会：' + esc(ev.name) + '（' + esc(RE.fmtMD(ev.date)) + '）<br>いまの練習：' + mine.length + '日（自動作成 ' + n('plan') + '／取り込み・作成 ' + n('menu') + '／手入力 ' + n('manual') + '）</p>' +
+    '<div class="card"><h4>① 自動で作る</h4><p class="small">大会日・目標・走力から、ベース期→強化期→調整期の計画を作ります。</p><div class="btns"><button class="btn primary grow" data-act="openPlanGen">自動作成する</button></div></div>' +
+    '<div class="card"><h4>② 作ったメニューを取り込む</h4><p class="small">自分で作った（またはコーチ・AIに作ってもらった）メニューを、文章・CSV・JSONで取り込みます。</p><div class="btns"><button class="btn primary grow" data-act="openMenuImport">取り込む</button></div></div>' +
+    '<div class="card"><h4>③ アプリの中で作る・直す</h4><p class="small">週ごとに、メニュー・距離・内容・補強を入力できます。①や②で入れた内容を、あとから直すこともできます。</p><div class="btns"><button class="btn primary grow" data-act="openMenuBuilder">作成・編集する</button></div></div>' +
+    '<div class="btns"><button class="btn" data-act="openCareEdit">🦶 ケア・補強の設定</button><button class="btn" data-act="menuExport">⬇ メニューを書き出す</button></div>' +
+    '<p class="xs muted">完了した日と手入力した日は、①②③のどれでも上書きしません。</p><p class="disclaimer">' + esc(MTX.disclaimer) + '</p>';
+  openSheet('練習メニューの設定', html);
+}
+/* --- 取り込み --- */
+let pendingMenu = null;
+function openMenuImport() {
+  const ev = cur(); if (!ev) return; pendingMenu = null;
+  const html = '<form id="mf" onsubmit="return false"><p class="small">大会：' + esc(ev.name) + '（' + esc(RE.fmtMD(ev.date)) + '）。この大会の練習として取り込みます。</p>' +
+    '<label>メニューを貼り付け<textarea name="text" rows="8" placeholder="2026-11-02,ジョグ,6,楽に,足首ケア,導入期"></textarea></label>' +
+    '<input type="file" id="menuFile" accept=".json,.csv,.txt,text/*,application/json" hidden>' +
+    '<div class="btns"><button type="button" class="btn" data-act="menuPickFile">📂 ファイルを選ぶ</button><button type="button" class="btn" data-act="menuSample">例を入れる</button></div>' +
+    '<details class="card"><summary>書き方（クリックで開く）</summary><div class="small"><p>1行に1日、カンマまたはタブ区切り：<br><code>日付,種類,距離(km),内容,補強・ケア,時期</code></p>' +
+    '<ul><li>日付：2026-11-02 または 11/2（年なしは大会日より前の直近の年）</li><li>種類：ジョグ／リカバリー／流し／ペース走（テンポ）／MP／インターバル／ロング／休養／大会</li><li>ペース：書かなければ、種類と大会の目標ペースから自動で入ります（7列目に 6:30 のように書くことも可）</li><li>「#」で始まる行と空行は無視します</li></ul>' +
+    '<p>JSONの場合：<code>{"app":"running-event-menu","version":1,"days":[{"date":"2026-11-02","type":"ジョグ","km":6,"note":"楽に","strength":"足首ケア","phase":"導入期"}],"care":{"weekly":{"火":"足首ケア"},"exercises":[{"name":"カーフレイズ","detail":"15回×2","how":"…"}]}}</code></p>' +
+    '<p>AIに作ってもらうときは、この形式で出力するよう頼むと、そのまま貼り付けられます。</p></div></details>' +
+    '<div class="btns"><button class="btn primary grow" data-act="menuPreview">内容を確認する</button></div></form><div id="menuPreview"></div>';
+  openSheet('メニューを取り込む', html);
+}
+function menuPreview() {
+  const ev = cur(), f = fm('#mf'), out = $('#menuPreview'); if (!ev || !f) return;
+  const res = RE.parseMenu(f.text.value, { eventDate: ev.date, basePaceSec: evBase(ev) });
+  if (res.error) { pendingMenu = null; out.innerHTML = '<div class="card notice-danger" role="alert">⛔ ' + esc(res.error) + '</div>'; return; }
+  pendingMenu = res;
+  let h = '<h3>取り込む内容（確認用）</h3>';
+  res.warnings.forEach(w => { h += '<div class="card notice-warn" role="alert">⚠️ ' + esc(w) + '</div>'; });
+  if (res.errorCount) h += '<div class="card notice-warn" role="alert">⚠️ 読み取れなかった行が ' + res.errorCount + ' 件あります（その行は取り込みません）。<ul>' + res.errors.slice(0, 5).map(x => '<li>' + x.n + '行目：' + esc(x.msg) + '</li>').join('') + '</ul></div>';
+  h += '<p class="small">' + res.summary.days + '日／' + res.summary.weeks + '週／合計 ' + RE.formatKm(res.summary.totalKm) + 'km（' + esc(RE.fmtMD(res.summary.from)) + ' 〜 ' + esc(RE.fmtMD(res.summary.to)) + '）</p>';
+  h += '<div class="card"><table class="pace-table"><thead><tr><th>週</th><th>時期</th><th>距離</th><th>ポイント</th></tr></thead><tbody>' +
+    RE.menuWeeks(res.items).map(w => '<tr><td>' + esc(RE.fmtMD(w.start)) + '</td><td>' + esc(w.phase) + (w.recovery ? ' <span class="badge">回復週</span>' : '') + '</td><td class="num">' + RE.formatKm(w.km) + 'km</td><td>' + w.days.filter(d => RE.isQuality(d.type) || d.type === 'lsd').map(d => esc(CFG.menuTypes[d.type])).join('・') + '</td></tr>').join('') + '</tbody></table></div>';
+  const m = res.meta, hasCare = Object.keys(m.care.weekly).length || m.care.exercises.length;
+  if (hasCare) h += '<label class="check"><input type="checkbox" id="mcare" checked> ケア・補強の設定（曜日ごとの一言・やり方 ' + m.care.exercises.length + '件）も取り込む</label>';
+  h += '<label class="check"><input type="checkbox" id="movw" checked> 自動作成・取り込み済みで未完了の日を置き換える</label><p class="xs muted">手入力・編集した日と、完了済みの日は上書きしません。外すと、予定のない日にだけ追加します。</p>';
+  h += '<div class="btns"><button class="btn primary grow" data-act="menuApply">このメニューを反映する</button></div><p class="disclaimer">' + esc(MTX.disclaimer) + '</p>';
+  out.innerHTML = h; out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function menuApply() {
+  const ev = cur(); if (!pendingMenu || !ev) return;
+  const r = RE.mergePlan(S.workouts, pendingMenu.items, ev.id, $('#movw').checked, () => uid('w'), S.settings.defaultShoeId, 'menu');
+  S.workouts = r.workouts;
+  const c = $('#mcare'), m = pendingMenu.meta;
+  if (c && c.checked) S.menus[ev.id] = { name: m.name || curMenu(ev).name, care: m.care }; else if (m.name) S.menus[ev.id] = Object.assign({}, curMenu(ev), { name: m.name });
+  pendingMenu = null; save(); closeSheet();
+  ui.tab = 'train'; ui.weekStart = RE.mondayOf(RE.todayStr()); render(); toast(r.added + '日分を追加しました' + (r.skipped ? '（' + r.skipped + '日は既存の記録を優先）' : '') + '。');
+}
+/* --- アプリ内で作る・直す --- */
+let bd = null;
+function openMenuBuilder() {
+  const ev = cur(); if (!ev) return;
+  const today = RE.todayStr(), items = RE.workoutsToItems(S.workouts, ev.id), map = {}; items.forEach(x => { map[x.date] = x; });
+  const locked = new Set(S.workouts.filter(w => w.eventId === ev.id && (w.done || w.manual)).map(w => w.date));
+  let start = RE.mondayOf(items.length && items[0].date < today ? items[0].date : today); const end = RE.mondayOf(ev.date);
+  if (start > end) return toast('大会日がすでに過ぎているため、作成できません。');
+  if (RE.dayNum(end) - RE.dayNum(start) > 7 * 79) start = RE.addDays(end, -7 * 79);
+  const weeks = []; for (let d = start; d <= end; d = RE.addDays(d, 7)) weeks.push(d);
+  let idx = weeks.indexOf(RE.mondayOf(today)); if (idx < 0) idx = 0;
+  bd = { ev, base: evBase(ev), map, locked, weeks, idx };
+  const html = '<form id="bf" onsubmit="return false"><div class="weeknav"><button type="button" class="btn small" data-act="bdPrev" aria-label="前の週">◀</button><div class="label" id="bTitle"></div><button type="button" class="btn small" data-act="bdNext" aria-label="次の週">▶</button></div>' +
+    '<p class="small" id="bSum"></p><div id="bWeek"></div>' +
+    '<div class="btns"><button type="button" class="btn small" data-act="bdCopy">前の週をコピー</button><button type="button" class="btn small" data-act="bdClear">この週を空にする</button></div>' +
+    '<p class="xs muted">メニューを「予定なし」にした日は、保存すると練習から外れます。距離を入れるとペースと時間は自動で入ります。</p>' +
+    '<div class="btns"><button type="button" class="btn primary grow" data-act="bdSave">保存して反映する</button></div></form>';
+  openSheet('練習メニューを作る・編集', html, e => { if (bd && e && e.target && e.target.closest && e.target.closest('#bWeek')) { syncWeek(true); updateSum(); } });
+  renderBWeek();
+}
+function renderBWeek() {
+  const ws = bd.weeks[bd.idx], ev = bd.ev;
+  $('#bTitle').innerHTML = '第' + (bd.idx + 1) + '週 / ' + bd.weeks.length + '<br>' + esc(RE.fmtMD(ws)) + ' 〜 ' + esc(RE.fmtMD(RE.addDays(ws, 6)));
+  const phase = (Object.keys(bd.map).map(k => bd.map[k]).filter(x => RE.mondayOf(x.date) === ws && x.phase)[0] || {}).phase || '';
+  let h = '<label>この週の時期（任意）<input name="phase" maxlength="20" value="' + esc(phase) + '" placeholder="例：導入期"></label>';
+  for (let i = 0; i < 7; i++) {
+    const d = RE.addDays(ws, i); if (d > ev.date) continue;
+    const it = bd.map[d], lk = bd.locked.has(d), wd = RE.WD_JA[RE.weekdayOf(d)];
+    h += '<div class="card bd-day"><div class="day-head"><span class="d">' + esc(RE.fmtMD(d)) + '（' + wd + '）' + (d === ev.date ? ' <span class="badge t-race">大会</span>' : '') + '</span></div>';
+    if (lk) { h += '<p class="xs muted">完了済み・手入力の日なので、ここでは変更しません' + (it ? '（' + esc(CFG.menuTypes[it.type]) + ' ' + RE.formatKm(it.distanceKm) + 'km）' : '') + '。</p></div>'; continue; }
+    h += '<div class="grid2"><label>メニュー<select name="t' + i + '">' + opt('', '（予定なし）', it ? it.type : '') + Object.keys(CFG.menuTypes).map(k => opt(k, CFG.menuTypes[k], it ? it.type : '')).join('') + '</select></label>' +
+      '<label>距離(km)<input name="k' + i + '" inputmode="decimal" value="' + esc(it ? RE.formatKm(it.distanceKm) : '') + '"></label></div>' +
+      '<label>内容<input name="n' + i + '" maxlength="200" value="' + esc(it ? it.memo : '') + '" placeholder="例：テンポ2km／流し4本"></label>' +
+      '<label>補強・ケア<input name="s' + i + '" maxlength="200" value="' + esc(it ? it.strength : '') + '" placeholder="例：足首ケア・体幹"></label></div>';
+  }
+  $('#bWeek').innerHTML = h; updateSum();
+}
+function weekItems(ws) { return Object.keys(bd.map).map(k => bd.map[k]).filter(x => RE.mondayOf(x.date) === ws); }
+function updateSum() {
+  const its = weekItems(bd.weeks[bd.idx]), km = its.reduce((a, x) => a + (x.distanceKm || 0), 0), q = its.filter(x => RE.isQuality(x.type) || x.type === 'lsd').length;
+  const el = $('#bSum'); if (el) el.textContent = 'この週：' + its.filter(x => x.type !== 'rest').length + '日／' + RE.formatKm(Math.round(km * 10) / 10) + 'km／ポイント練習 ' + q + '回';
+}
+/* 画面の入力を下書きへ。形式エラーなら false（quiet のときは通知しない） */
+function syncWeek(quiet) {
+  const f = fm('#bf'); if (!f || !bd) return true;
+  const ws = bd.weeks[bd.idx], phase = f.phase.value.trim().slice(0, 20); let ok = true;
+  for (let i = 0; i < 7; i++) {
+    const d = RE.addDays(ws, i); if (d > bd.ev.date || bd.locked.has(d)) continue;
+    const tEl = f['t' + i]; if (!tEl) continue;
+    const t = tEl.value; if (!t) { delete bd.map[d]; continue; }
+    const kt = f['k' + i].value.trim(), km = kt === '' ? null : RE.parseKm(kt);
+    if (kt !== '' && km == null) { ok = false; if (!quiet) toast(RE.fmtMD(d) + ' の距離の形式を確認してください。'); }
+    const old = bd.map[d];
+    bd.map[d] = RE.finishItem({ date: d, type: t, distanceKm: km, paceSec: old && old.type === t ? old.paceSec : null, durationSec: null, memo: f['n' + i].value.trim().slice(0, 200), strength: f['s' + i].value.trim().slice(0, 200), phase }, bd.base);
+  }
+  weekItems(ws).forEach(x => { x.phase = phase; });
+  return ok;
+}
+function bdMove(d) { if (!syncWeek()) return; const n = bd.idx + d; if (n < 0 || n >= bd.weeks.length) return; bd.idx = n; renderBWeek(); const b = document.querySelector('.sheet-body'); if (b) b.scrollTop = 0; }
+function bdCopy() {
+  if (bd.idx < 1) return toast('コピーできる前の週がありません。'); if (!syncWeek()) return;
+  const ws = bd.weeks[bd.idx], prev = bd.weeks[bd.idx - 1], src = Object.keys(bd.map).map(k => bd.map[k]);
+  const add = RE.copyWeek(src, prev, ws, bd.base).filter(x => x.date <= bd.ev.date && !bd.locked.has(x.date));
+  if (!add.length) return toast('前の週に、コピーできる練習がありません。');
+  weekItems(ws).forEach(x => { if (!bd.locked.has(x.date)) delete bd.map[x.date]; });
+  add.forEach(x => { bd.map[x.date] = x; }); renderBWeek(); toast('前の週の内容をコピーしました。');
+}
+function bdClear() { const ws = bd.weeks[bd.idx]; weekItems(ws).forEach(x => { if (!bd.locked.has(x.date)) delete bd.map[x.date]; }); renderBWeek(); }
+function bdSave() {
+  if (!syncWeek()) return; const ev = bd.ev;
+  const items = Object.keys(bd.map).map(k => bd.map[k]).filter(x => x.date <= ev.date);
+  if (!items.length && !confirm('練習が1日もありません。未完了の自動作成・作成済みの練習をすべて削除します。よろしいですか？')) return;
+  const old = {}; S.workouts.forEach(w => { if (w.eventId === ev.id) old[w.date] = w; });
+  const r = RE.mergePlan(S.workouts, items, ev.id, true, () => uid('w'), S.settings.defaultShoeId, 'menu');
+  r.workouts.forEach(w => { const o = old[w.date]; if (w.eventId === ev.id && w.source === 'menu' && !w.done && o && o !== w && o.shoeId && w.type !== 'rest') w.shoeId = o.shoeId; });
+  S.workouts = r.workouts; bd = null; save(); closeSheet(); ui.tab = 'train'; render(); toast('メニューを反映しました（' + r.added + '日分）。');
+}
+/* --- ケア・補強の設定 --- */
+function openCareEdit() {
+  const ev = cur(); if (!ev) return; const m = curMenu(ev), wk = m.care.weekly;
+  const html = '<form id="cf" onsubmit="return false"><label>メニュー名（任意）<input name="name" maxlength="60" value="' + esc(m.name) + '" placeholder="例：京都マラソン2027 練習表"></label>' +
+    '<h4>曜日ごとのケア・補強（練習タブの各日に表示）</h4><div class="grid2">' + [1, 2, 3, 4, 5, 6, 0].map(i => '<label>' + RE.WD_JA[i] + '曜<input name="c' + i + '" maxlength="100" value="' + esc(wk[i] || '') + '" placeholder="例：足首ケア"></label>').join('') + '</div>' +
+    '<label>やり方の一覧（1行に1つ：名前｜回数｜やり方）<textarea name="ex" rows="6" placeholder="カーフレイズ｜15回×2｜壁に手を添え、かかとをゆっくり上げ下げする">' + esc(m.care.exercises.map(x => [x.name, x.detail, x.how].join('｜')).join('\n')) + '</textarea></label>' +
+    '<p class="small">' + esc(MTX.careDisclaimer) + '</p><div class="btns"><button type="button" class="btn" data-act="careSample">例を入れる</button><button type="button" class="btn primary grow" data-act="careSave">保存</button></div></form>';
+  openSheet('ケア・補強の設定', html);
+}
+function careSample() {
+  const f = fm('#cf'), s = MTX.sampleCare; if (!f) return;
+  Object.keys(s.weekly).forEach(k => { const i = RE.WD_JA.indexOf(k); if (i >= 0) f['c' + i].value = s.weekly[k]; });
+  f.ex.value = s.exercises.map(x => [x.name, x.detail, x.how].join('｜')).join('\n');
+}
+function careSave() {
+  const ev = cur(), f = fm('#cf'); if (!ev || !f) return; const weekly = {};
+  for (let i = 0; i < 7; i++) { const v = f['c' + i].value.trim(); if (v) weekly[RE.WD_JA[i]] = v; }
+  const exercises = f.ex.value.split(/\r?\n/).map(l => l.split(/[｜|]/).map(x => x.trim())).filter(c => c[0]).map(c => ({ name: c[0], detail: c[1] || '', how: c.slice(2).join('｜') }));
+  S.menus[ev.id] = RE.sanitizeMenu({ name: f.name.value, care: { weekly, exercises } }); save(); closeSheet(); render(); toast('ケア・補強の設定を保存しました。');
+}
+function menuExport() {
+  const ev = cur(); if (!ev) return; const items = RE.workoutsToItems(S.workouts, ev.id);
+  if (!items.length) return toast('書き出せる練習がありません。');
+  const data = RE.exportMenu(items, curMenu(ev), curMenu(ev).name || ev.name);
+  downloadText('running-menu-' + RE.todayStr() + '.json', JSON.stringify(data, null, 2)); toast('メニューを書き出しました（ペースは含まず、取り込み時に目標から計算されます）。');
+}
+function trainFooter(ev) {
+  const base = evBase(ev), m = curMenu(ev); let h = '';
+  const lg = RE.menuLegend(base);
+  h += '<details class="card"><summary>ペースの目安・メニューの種類</summary><table class="pace-table"><thead><tr><th>種類</th><th>ペース</th><th>ひとこと</th></tr></thead><tbody>' +
+    lg.map(x => '<tr><td>' + esc(x.label) + '</td><td class="num">' + (x.paceSec ? esc(paceTxt(x.paceSec)) : '—') + '</td><td class="small">' + esc(x.hint) + '</td></tr>').join('') + '</tbody></table>' +
+    '<p class="xs muted">基準は大会の' + (ev.goalSec ? '目標ペース' : '推定ペース（目標タイム未設定）') + '。MPは大会ペースです。</p></details>';
+  if (m.care.exercises.length) h += '<details class="card"><summary>ケア・補強のやり方</summary>' + m.care.exercises.map(x => '<div class="care-ex"><b>' + esc(x.name) + '</b>' + (x.detail ? '　<span class="muted">' + esc(x.detail) + '</span>' : '') + (x.how ? '<p class="small">' + esc(x.how) + '</p>' : '') + '</div>').join('') + '<p class="xs muted">' + esc(MTX.careDisclaimer) + '</p></details>';
+  return h;
+}
+
+/* ---------------- 練習スケジュール ---------------- */
+function workoutCard(w) {
+  const km = w.distanceKm, rest = w.type === 'rest';
+  let h = '<div class="card tap' + (w.done ? ' is-done' : '') + (RE.isQuality(w.type) ? ' is-quality' : '') + '" role="button" tabindex="0" data-act="editW" data-id="' + w.id + '"><div class="wk-line"><span class="badge t-' + w.type + '">' + CFG.menuTypes[w.type] + '</span>';
+  if (!rest) h += '<span class="wk-main">' + (km ? RE.formatKm(km) + 'km' : '') + '</span><span class="wk-sub">' + esc(paceTxt(w.paceSec)) + (w.durationSec ? '　' + esc(RE.formatDuration(w.durationSec)) : '') + '</span>';
+  if (w.done) h += '<span class="status lv-ok">✅ 完了</span>';
+  h += '</div>';
+  if (w.done && (w.actualDistanceKm || w.actualDurationSec)) {
+    const ak = w.actualDistanceKm || km, ad = w.actualDurationSec;
+    h += '<div class="wk-sub">実績：' + (ak ? RE.formatKm(ak) + 'km' : '') + (ad ? '　' + esc(RE.formatDuration(ad)) : '') + (ak && ad ? '　' + esc(paceTxt(ad / ak)) : '') + '</div>';
+  }
+  if (w.memo) h += '<div class="wk-sub">' + esc(w.memo) + '</div>';
+  if (w.strength) h += '<div class="wk-sub wk-strength">🦵 ' + esc(w.strength) + '</div>';
+  if (!rest) h += '<div class="btns"><button type="button" class="btn small' + (w.done ? '' : ' primary') + '" data-act="toggleDone" data-id="' + w.id + '">' + (w.done ? '完了を外す' : '✓ 完了にする') + '</button></div>';
+  return h + '</div>';
+}
+function viewTrain() {
+  const ev = cur(); let h = '<div class="topbar"><h1>📅 練習</h1><span class="btns"><button class="btn small" data-act="openMenuHub">📋 メニュー</button><button class="btn small" data-act="addW" data-date="' + RE.todayStr() + '">＋ 追加</button></span></div>';
+  if (!ev) return h + '<div class="card center"><p>まず大会を登録してください。</p><button class="btn primary" data-act="newEvent">大会を登録する</button></div>';
+  const ws = ui.weekStart, we = RE.addDays(ws, 6), list = S.workouts.filter(w => w.eventId === ev.id && w.date >= ws && w.date <= we);
+  const nonRace = list.filter(w => w.type !== 'race' && w.type !== 'rest');
+  const planned = nonRace.reduce((a, w) => a + (w.distanceKm || 0), 0), done = nonRace.filter(w => w.done).reduce((a, w) => a + RE.recordKm(w), 0);
+  const pct = planned > 0 ? Math.round(done / planned * 100) : 0;
+  h += '<div class="weeknav"><button class="btn small" data-act="weekMove" data-d="-7" aria-label="前の週">◀</button><div class="label">' + esc(RE.fmtMD(ws)) + ' 〜 ' + esc(RE.fmtMD(we)) + '<br><button class="btn small ghost" data-act="weekToday">今週へ</button></div><button class="btn small" data-act="weekMove" data-d="7" aria-label="次の週">▶</button></div>';
+  const wkInfo = RE.menuWeeks(RE.workoutsToItems(S.workouts, ev.id)).find(x => x.start === ws);
+  if (wkInfo && (wkInfo.phase || wkInfo.recovery)) h += '<p class="small">' + (wkInfo.phase ? '<span class="badge">' + esc(wkInfo.phase) + '</span> ' : '') + (wkInfo.recovery ? '<span class="badge">回復週</span>' : '') + '</p>';
+  h += '<div class="card"><div class="row-between"><span>今週の計画 <b>' + RE.formatKm(planned) + 'km</b></span><span>実績 <b>' + RE.formatKm(done) + 'km</b></span><span>達成率 <b>' + pct + '%</b></span></div>' +
+    '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.min(100, pct) + '" aria-label="週間達成率"><span class="progress-fill" style="width:' + Math.min(100, pct) + '%"></span></div></div>';
+  const today = RE.todayStr();
+  for (let i = 0; i < 7; i++) {
+    const d = RE.addDays(ws, i), ds = list.filter(w => w.date === d);
+    h += '<div class="day-head"><span class="d">' + esc(RE.fmtMD(d)) + (d === today ? ' <span class="badge today">今日</span>' : '') + (d === ev.date ? ' <span class="badge t-race">大会</span>' : '') + '</span><button class="btn small ghost" data-act="addW" data-date="' + d + '">＋</button></div>';
+    const care = RE.careLine(S.menus[ev.id], d); if (care && !ds.some(w => w.strength)) h += '<div class="care-line">🦶 ' + esc(care) + '</div>';
+    h += ds.length ? ds.map(workoutCard).join('') : '<div class="empty-day">予定なし</div>';
+  }
+  return h + trainFooter(ev) + '<p class="disclaimer">' + esc(TX.planDisclaimer) + '</p>';
+}
+function openWorkout(id, presetDate) {
+  const isNew = !id, ev = cur();
+  const w = isNew ? { date: presetDate || RE.todayStr(), type: 'jog', distanceKm: null, paceSec: null, durationSec: null, shoeId: S.settings.defaultShoeId || null, memo: '', strength: '', done: false, actualDistanceKm: null, actualDurationSec: null, weather: null } : S.workouts.find(x => x.id === id);
+  if (!w) return; let order = [];
+  const html = '<form id="wf" onsubmit="return false"><label>日付<input type="date" name="date" value="' + esc(w.date) + '"></label>' +
+    '<label>メニュー<select name="type">' + Object.keys(CFG.menuTypes).map(k => opt(k, CFG.menuTypes[k], w.type)).join('') + '</select></label>' +
+    '<p class="xs muted">距離・ペース・時間のうち2つを入れると、残りが自動で入ります。</p>' +
+    '<div class="grid3"><label>距離(km)<input name="km" inputmode="decimal" value="' + esc(RE.formatKm(w.distanceKm)) + '"></label>' +
+    '<label>ペース(分:秒/km)<input name="pace" inputmode="numeric" value="' + esc(RE.formatPace(w.paceSec)) + '" placeholder="5:30"></label>' +
+    '<label>時間(時:分:秒)<input name="dur" inputmode="numeric" value="' + esc(RE.formatDuration(w.durationSec)) + '" placeholder="0:55:00"></label></div>' +
+    '<label>使用シューズ<select name="shoe">' + shoeOptions(w.shoeId, true) + '</select></label>' +
+    '<label>メモ<textarea name="memo">' + esc(w.memo) + '</textarea></label>' +
+    '<label>補強・ケア（任意）<input name="strength" maxlength="200" value="' + esc(w.strength || '') + '"></label>' +
+    '<label class="check"><input type="checkbox" name="done"' + (w.done ? ' checked' : '') + '> 完了した</label>' +
+    '<div id="actualBox" class="card" hidden><h4>実績</h4><div class="grid2"><label>走った距離(km)<input name="akm" inputmode="decimal" value="' + esc(RE.formatKm(w.actualDistanceKm)) + '"></label>' +
+    '<label>かかった時間(時:分:秒)<input name="adur" inputmode="numeric" value="' + esc(RE.formatDuration(w.actualDurationSec)) + '"></label></div><p class="small" id="apace"></p></div>' +
+    '<h3>天気・気温</h3>' + wxFields(w.weather, 'workout', w.date, '') +
+    '<h3>ひとことアドバイス</h3><div id="advBox"></div>' +
+    '<div class="btns"><button class="btn primary grow" data-act="saveW" data-id="' + (id || '') + '">保存</button>' + (isNew ? '' : '<button class="btn danger" data-act="deleteW" data-id="' + id + '">削除</button>') + '</div></form>';
+  const fmt = { km: RE.formatKm, pace: RE.formatPace, dur: RE.formatDuration };
+  openSheet(isNew ? '練習を追加' : '練習を編集', html, e => {
+    const f = fm('#wf'); if (!f) return;
+    const n = e && e.target && e.target.name;
+    if (['km', 'pace', 'dur'].includes(n)) {
+      order.push(n);
+      const v = { km: RE.parseKm(f.km.value), pace: RE.parsePace(f.pace.value), dur: RE.parseDuration(f.dur.value) }, r = RE.solveTriad(v, order);
+      ['km', 'pace', 'dur'].forEach(k => { if (k !== n && r[k] && r[k] !== v[k]) f[k].value = fmt[k](r[k]); });
+    }
+    if (n === 'date') { const box = f.querySelector('.wxbox'); box.dataset.date = f.date.value; box.querySelector('[data-role=fetch]').innerHTML = wxFetchRow(f.date.value); }
+    if (n === 'done' && f.done.checked) { if (!f.akm.value && f.km.value) f.akm.value = f.km.value; if (!f.adur.value && f.dur.value) f.adur.value = f.dur.value; }
+    $('#actualBox').hidden = !f.done.checked;
+    const ak = RE.parseKm(f.akm.value) || RE.parseKm(f.km.value), ad = RE.parseDuration(f.adur.value);
+    $('#apace').textContent = (ak && ad) ? '実績ペース：' + paceTxt(ad / ak) : '';
+    const dur = RE.parseDuration(f.dur.value), pace = RE.parsePace(f.pace.value), wx = readWx(f);
+    $('#advBox').innerHTML = RE.dayAdvice({ type: f.type.value, durationSec: dur, paceSec: pace }, wx).map(adviceCard).join('') + '<p class="disclaimer">' + esc(TX.disclaimer) + '</p>';
+  });
+}
+const ICON = { wear: '👕', hydration: '💧', nutrition: '🍙' };
+const adviceCard = c => '<div class="card advice"><h4>' + (ICON[c.kind] || '') + ' ' + esc(c.title) + '</h4><p>' + esc(c.text) + '</p></div>';
+function saveW(id) {
+  const f = fm('#wf'); if (!RE.isValidDate(f.date.value)) return toast('日付を入力してください。');
+  const rest = f.type.value === 'rest', chk = [['km', f.km, RE.parseKm, '距離'], ['pace', f.pace, RE.parsePace, 'ペース'], ['dur', f.dur, RE.parseDuration, '時間'], ['akm', f.akm, RE.parseKm, '実績の距離'], ['adur', f.adur, RE.parseDuration, '実績の時間']], v = {};
+  for (const c of chk) { v[c[0]] = c[1].value.trim() ? c[2](c[1].value) : null; if (c[1].value.trim() && v[c[0]] == null) return toast(c[3] + 'の形式を確認してください。'); }
+  const t = rest ? { km: null, pace: null, dur: null } : RE.solveTriad({ km: v.km, pace: v.pace, dur: v.dur }, ['km', 'pace', 'dur']);
+  const o = id ? S.workouts.find(x => x.id === id) : { id: uid('w'), eventId: S.currentEventId, source: 'manual', manual: true };
+  Object.assign(o, { date: f.date.value, type: f.type.value, distanceKm: t.km || null, paceSec: t.pace || null, durationSec: t.dur || null, shoeId: rest ? null : (f.shoe.value || null), memo: f.memo.value.trim(), strength: f.strength.value.trim(),
+    done: f.done.checked, actualDistanceKm: f.done.checked ? v.akm : null, actualDurationSec: f.done.checked ? v.adur : null, weather: readWx(f), manual: true });
+  if (!id) S.workouts.push(o);
+  save(); closeSheet(); ui.weekStart = RE.mondayOf(o.date); render();
+}
+
+/* ---------------- 当日のスケジュール ---------------- */
+const tpad = t => (t.length === 4 ? '0' + t : t);
+function raceInfo(ev) {
+  const rd = RE.raceDuration(ev); if (!rd) return null;
+  const temp = RE.tempFromWeather(ev.weather);
+  return { rd, f: RE.fuelPlan(rd.sec, rd.paceSec), h: RE.hydrationPlan(rd.sec, temp), temp, km: RE.eventKm(ev) };
+}
+function paceTableHtml(ev, info) {
+  const km = info.km, p = info.rd.paceSec; if (!(ev.goalSec > 0)) return '<p class="small muted">目標タイムを設定すると、5kmごとの通過予想タイムが表示されます。</p>';
+  const marks = []; info.f.items.forEach(i => { if (i.km) marks.push({ km: i.km, kind: 'fuel', text: 'ここで補給（約' + i.atMin + '分）' }); });
+  info.h.times.forEach(t => marks.push({ km: Math.round(t * 60 / p * 10) / 10, kind: 'water', text: 'ここで給水（約' + t + '分）' }));
+  const rows = []; for (let x = 5; x < km; x += 5) rows.push(x); rows.push(km);
+  let prev = 0, h = '<table class="pace-table"><thead><tr><th>地点</th><th>通過予想</th><th>補給・給水の目安</th></tr></thead><tbody>';
+  rows.forEach(x => {
+    const ms = marks.filter(m => m.km > prev && m.km <= x + 1e-9).sort((a, b) => a.km - b.km);
+    h += '<tr><td class="num">' + (x === km && km % 5 !== 0 ? RE.formatKm(x) + 'km（ゴール）' : RE.formatKm(x) + 'km') + '</td><td class="num">' + esc(RE.formatDuration(x * p)) + '</td><td>' +
+      ms.map(m => '<span class="mark ' + m.kind + '">' + (m.kind === 'fuel' ? '🍌 ' : '💧 ') + esc(m.text) + '（' + m.km + 'km付近）</span>').join('') + '</td></tr>'; prev = x;
+  });
+  return h + '</tbody></table><p class="xs muted">一定のペースで走った場合の想定です。' + (info.rd.estimated ? '' : '') + '</p>';
+}
+function addTL(ev, time, title) {
+  if (S.dayItems.some(d => d.eventId === ev.id && d.time === time && d.title === title)) return false;
+  S.dayItems.push({ id: uid('d'), eventId: ev.id, time, title, memo: '' }); return true;
+}
+function viewDay() {
+  const ev = cur(); let h = '<div class="topbar"><h1>🏁 当日</h1></div>';
+  if (!ev) return h + '<div class="card center"><p>まず大会を登録してください。</p><button class="btn primary" data-act="newEvent">大会を登録する</button></div>';
+  const d = RE.daysUntil(ev.date);
+  h += '<div class="card hero"><h2>' + esc(ev.name) + '</h2><p class="muted">' + esc(RE.fmtFull(ev.date)) + (ev.startTime ? '　スタート ' + esc(ev.startTime) : '') + '</p><div class="count">' + (d > 0 ? 'あと ' + d + ' 日' : d === 0 ? '今日！' : '終了') + '</div></div>' + lessonsHtml(ev);
+  /* タイムライン */
+  const items = S.dayItems.filter(x => x.eventId === ev.id).sort((a, b) => tpad(a.time).localeCompare(tpad(b.time)));
+  h += '<h3>タイムライン</h3><div class="card">' + (items.length ? '<ul class="timeline">' + items.map(x => '<li><span class="time">' + esc(tpad(x.time)) + '</span><button class="title" data-act="editTL" data-id="' + x.id + '">' + esc(x.title) + (x.memo ? '<br><span class="small muted">' + esc(x.memo) + '</span>' : '') + '</button></li>').join('') + '</ul>' : '<p class="muted small">予定がありません。</p>') +
+    '<div class="btns"><button class="btn primary" data-act="addTL">＋ 予定を追加</button>' + (ev.startTime ? '<button class="btn" data-act="addBasicTL">スタート時刻から基本の予定を入れる</button>' : '') + '</div></div>';
+  const info = raceInfo(ev);
+  /* ペース表 */
+  if (info) h += '<h3>通過予想タイム（5kmごと）</h3><div class="card">' + paceTableHtml(ev, info) + '</div>';
+  /* 持ち物 */
+  const pk = S.packing.filter(p => p.eventId === ev.id);
+  h += '<h3>持ち物チェックリスト</h3><div class="card">' + (pk.length ? pk.map(p => '<div class="pack' + (p.checked ? ' checked' : '') + '"><button class="chk" data-act="togglePack" data-id="' + p.id + '" aria-pressed="' + p.checked + '"><span aria-hidden="true">' + (p.checked ? '☑' : '☐') + '</span><span class="txt">' + esc(p.text) + '</span></button>' + (p.auto ? '<span class="xs muted">自動</span>' : '<button class="btn small ghost" data-act="delPack" data-id="' + p.id + '" aria-label="削除">✕</button>') + '</div>').join('') : '<p class="muted small">まだありません。</p>') +
+    '<div class="row"><label>持ち物を追加<input id="packNew" placeholder="例：ゼッケン"></label><button class="btn" data-act="addPack">追加</button></div></div>';
+  /* アドバイス */
+  h += '<h3>栄養・水分・ウエアのアドバイス</h3><div class="card banner" role="note">⚠️ ' + esc(TX.tryRule) + '</div>';
+  const km = RE.eventKm(ev);
+  if (info && info.rd.estimated) h += '<p class="small muted">目標タイムが未設定のため、中級者の目安タイムで計算しています。</p>';
+  h += '<h4>🍙 栄養</h4>';
+  if (km >= CFG.fuel.carbLoadMinKm) h += adviceBlock(TX.carbLoad);
+  const bt = ev.startTime ? RE.timeAddHours(ev.startTime, -CFG.fuel.breakfastBeforeStartH * 60) : null;
+  h += adviceBlock({ title: TX.breakfast.title + (bt ? '（' + bt + '頃）' : ''), lines: TX.breakfast.lines }, bt ? '<button class="btn small" data-act="addTLfrom" data-time="' + bt + '" data-title="朝食">タイムラインに追加</button>' : '<span class="xs muted">スタート時刻を設定すると、タイムラインに追加できます。</span>');
+  if (info) {
+    const f = info.f;
+    if (f.needed) {
+      const btns = ev.startTime ? '<button class="btn small" data-act="addFuelTL">補給の時刻をタイムラインに追加</button>' : '<span class="xs muted">スタート時刻を設定すると、タイムラインに追加できます。</span>';
+      h += adviceBlock({ title: '大会中の補給', lines: ['走る時間が約' + Math.round(info.rd.sec / 60) + '分と長いため、一定の間隔で補給します。', '目安：' + CFG.fuel.firstAtMin + '分頃から約' + CFG.fuel.intervalMin + '分ごとに、合計' + f.items.length + '回（' + f.items.map(i => i.atMin + '分' + (i.km ? '（約' + i.km + 'km）' : '')).join('、') + '）。', 'ジェルなどで1回あたり炭水化物約' + CFG.fuel.carbPerGelG + 'g、合計約' + f.carbsG + 'gが目安。'] }, btns);
+    } else h += adviceBlock({ title: '大会中の補給', lines: ['走る時間が約' + CFG.fuel.thresholdMin + '分以内の見込みのため、特別な補給は基本的に不要です。'] });
+  }
+  h += adviceBlock(TX.after);
+  h += '<h4>💧 水分</h4>' + adviceBlock(TX.hydrationDaily);
+  const wt = ev.startTime ? RE.timeAddHours(ev.startTime, -CFG.fuel.preWaterBeforeStartH * 60) : null;
+  h += adviceBlock({ title: TX.hydrationBefore.title + (wt ? '（' + wt + '頃から）' : ''), lines: TX.hydrationBefore.lines }, wt ? '<button class="btn small" data-act="addTLfrom" data-time="' + wt + '" data-title="水分補給を始める">タイムラインに追加</button>' : '');
+  if (info) {
+    const hh = info.h;
+    h += adviceBlock({ title: '走行中', lines: ['約' + hh.intervalMin + '分ごとに' + hh.ml[0] + '〜' + hh.ml[1] + 'mlを目安に（' + hh.times.length + '回、合計約' + hh.totalMlRange[0] + '〜' + hh.totalMlRange[1] + 'ml）。',
+      info.temp == null ? '気温が未入力のため' + CFG.hydration.defaultTempC + '℃として計算しています。' : '想定気温：' + info.temp + '℃。', hh.hot ? '気温が' + CFG.hydration.hotTempC + '℃以上のため、給水の回数を増やしています。' : '気温が' + CFG.hydration.hotTempC + '℃以上になる場合は、給水の回数を増やしましょう。'] });
+  }
+  h += adviceBlock(TX.hydrationAfter) + '<div class="card notice-info">ℹ️ ' + esc(TX.drinkCaution) + '</div>';
+  h += '<h4>👕 ウエア</h4><div class="card"><div class="row-between"><span class="small">天気・気温：' + (ev.weather ? esc(wxSummary(ev.weather)) + ' <span class="badge auto">' + noteFor(ev.weather) + '</span>' : '未入力') + '</span><button class="btn small" data-act="editEvWx">入力・取得</button></div>' +
+    (ev.weather && ev.weather.at ? '<p class="xs muted">' + esc(wxMeta(ev.weather)) + '</p>' : '') + '</div>';
+  const wear = RE.wearAdvice(ev.weather, 'race');
+  h += wear ? wearHtml(wear, true) : '<div class="card advice"><p>天気・気温を入力するとウエアの提案が出ます。</p></div>';
+  h += '<div class="card notice-info">ℹ️ ' + esc(TX.newGearRule) + '</div>';
+  RE.raceShoeChecks(ev, S.shoes, S.workouts).forEach(c => { h += '<div class="card notice-warn" role="alert">⚠️ ' + esc(c.text) + '</div>'; });
+  return h + '<p class="disclaimer">' + esc(TX.disclaimer) + '</p>';
+}
+function adviceBlock(b, extra) { return '<div class="card advice"><h4>' + esc(b.title) + '</h4><ul>' + b.lines.map(l => '<li>' + esc(l) + '</li>').join('') + '</ul>' + (extra ? '<div class="btns">' + extra + '</div>' : '') + '</div>'; }
+function wearHtml(a, canPack) {
+  return '<div class="card advice"><h4>提案（気温' + esc(a.tierLabel) + '／走ると体感は＋約' + CFG.wear.effectiveTempOffset + '℃）</h4><ul><li>上半身：' + esc(a.upper) + '</li><li>下半身：' + esc(a.lower) + '</li></ul>' +
+    (a.acc.length ? '<p class="small">小物：</p><div class="chips">' + a.acc.map(x => '<span class="chip">' + esc(x) + '</span>').join('') + '</div>' : '') +
+    (a.wait.length ? '<p class="small">スタート待ちの防寒：</p><div class="chips">' + a.wait.map(x => '<span class="chip">' + esc(x) + '</span>').join('') + '</div>' : '') +
+    a.notes.map(n => '<p class="small">ℹ️ ' + esc(n) + '</p>').join('') +
+    (canPack ? '<div class="btns"><button class="btn small" data-act="packWear">持ち物リストに追加</button></div>' : '') + '</div>';
+}
+function openTL(id, title) {
+  const ev = cur(), x = id ? S.dayItems.find(d => d.id === id) : { time: ev.startTime || '', title: title || '', memo: '' }; if (!x) return;
+  openSheet(id ? '予定を編集' : '予定を追加', '<form id="tf" onsubmit="return false"><label>時刻<input type="time" name="time" value="' + esc(x.time.length === 4 ? '0' + x.time : x.time) + '"></label><label>予定<input name="title" value="' + esc(x.title) + '" placeholder="例：朝食・受付・荷物預け"></label><label>メモ<textarea name="memo">' + esc(x.memo) + '</textarea></label>' +
+    '<div class="btns"><button class="btn primary grow" data-act="saveTL" data-id="' + (id || '') + '">保存</button>' + (id ? '<button class="btn danger" data-act="deleteTL" data-id="' + id + '">削除</button>' : '') + '</div></form>');
+}
+function openEvWx() {
+  const ev = cur(); if (!ev) return;
+  openSheet('大会の天気・気温', '<form id="xf" onsubmit="return false">' + wxFields(ev.weather, 'event', ev.date, ev.startTime) + '<h4>提案プレビュー</h4><div id="wearPrev"></div><div class="btns"><button class="btn primary grow" data-act="saveEvWx">保存</button></div></form><p class="disclaimer">' + esc(TX.disclaimer) + '</p>', () => {
+    const a = RE.wearAdvice(readWx($('#xf')), 'race'); $('#wearPrev').innerHTML = a ? wearHtml(a, false) : '<p class="small">天気・気温を入力するとウエアの提案が出ます。</p>';
+  });
+}
+
+/* ---------------- シューズ ---------------- */
+function shoeCard(s) {
+  const total = RE.shoeTotalKm(s, S.workouts), st = RE.shoeStatus(total, s.limitKm), pct = Math.min(100, Math.round(st.ratio * 100)), last = RE.shoeLastUsed(s, S.workouts);
+  const stTxt = st.level === 'over' ? '⛔ ' + st.label : st.level === 'warn' ? '⚠️ ' + st.label : '✅ まだ余裕あり';
+  return '<div class="card tap" role="button" tabindex="0" data-act="editShoe" data-id="' + s.id + '"><div class="row-between"><b>' + esc(s.name) + '</b><span class="badge">' + CFG.shoeStatuses[s.status] + '</span></div>' +
+    '<p class="small muted">' + esc([s.brand, CFG.shoeUses[s.use]].filter(Boolean).join('／')) + (S.settings.defaultShoeId === s.id ? '　★標準' : '') + '</p>' +
+    '<div class="row-between"><span><b>' + RE.formatKm(Math.round(total * 10) / 10) + 'km</b> / ' + RE.formatKm(s.limitKm) + 'km</span><span class="status lv-' + st.level + '">' + stTxt + '</span></div>' +
+    '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '" aria-label="目安距離に対する割合"><span class="progress-fill lv-' + st.level + '" style="width:' + pct + '%"></span></div>' +
+    '<p class="xs muted">目安に対して ' + Math.round(st.ratio * 100) + '%　購入日：' + (s.purchaseDate ? esc(RE.fmtMD(s.purchaseDate)) : '—') + '　最後に使った日：' + (last ? esc(RE.fmtMD(last)) : '—') + '</p></div>';
+}
+function viewShoes() {
+  let h = '<div class="topbar"><h1>👟 シューズ</h1><button class="btn small" data-act="newShoe">＋ 追加</button></div>';
+  const act = S.shoes.filter(s => s.status !== 'retired'), ret = S.shoes.filter(s => s.status === 'retired');
+  h += act.length ? act.map(shoeCard).join('') : '<div class="card center"><p>シューズが登録されていません。</p></div>';
+  if (ret.length) h += '<h3>引退したシューズ</h3>' + ret.map(shoeCard).join('');
+  return h + '<p class="disclaimer">' + esc(TX.shoeDisclaimer) + '</p>';
+}
+function openShoe(id) {
+  const isNew = !id, s = isNew ? { name: '', brand: '', use: 'training', purchaseDate: '', initialKm: 0, limitKm: CFG.shoes.defaultLimitKm, status: 'active', memo: '' } : S.shoes.find(x => x.id === id); if (!s) return;
+  openSheet(isNew ? 'シューズを追加' : 'シューズを編集', '<form id="sf" onsubmit="return false"><label>名前<input name="name" value="' + esc(s.name) + '"></label><label>ブランド<input name="brand" value="' + esc(s.brand) + '"></label>' +
+    '<label>用途<select name="use">' + Object.keys(CFG.shoeUses).map(k => opt(k, CFG.shoeUses[k], s.use)).join('') + '</select></label>' +
+    '<label>購入日<input type="date" name="purchase" value="' + esc(s.purchaseDate) + '"></label>' +
+    '<label>使い始めた時点の走行距離(km)（中古・使用済みの場合）<input name="initial" inputmode="decimal" value="' + esc(s.initialKm) + '"></label>' +
+    '<label>買い替えの目安距離(km)（' + CFG.shoes.limitRangeKm[0] + '〜' + CFG.shoes.limitRangeKm[1] + 'kmが一般的）<input name="limit" inputmode="decimal" value="' + esc(s.limitKm) + '"></label>' +
+    '<label>状態<select name="status">' + Object.keys(CFG.shoeStatuses).map(k => opt(k, CFG.shoeStatuses[k], s.status)).join('') + '</select></label>' +
+    '<label>メモ<textarea name="memo">' + esc(s.memo) + '</textarea></label><p class="xs muted">累計距離は、完了した練習の記録から自動で計算されます。</p>' +
+    '<div class="btns"><button class="btn primary grow" data-act="saveShoe" data-id="' + (id || '') + '">保存</button>' + (isNew ? '' : '<button class="btn danger" data-act="deleteShoe" data-id="' + id + '">削除</button>') + '</div></form><p class="disclaimer">' + esc(TX.shoeDisclaimer) + '</p>');
+}
+function saveShoe(id) {
+  const f = fm('#sf'), name = f.name.value.trim(); if (!name) return toast('シューズの名前を入力してください。');
+  const initial = f.initial.value.trim() ? numParse(f.initial.value) : 0, limit = numParse(f.limit.value);
+  if (initial == null || initial < 0) return toast('走行距離を確認してください。'); if (!(limit > 0)) return toast('買い替えの目安距離を確認してください。');
+  const s = id ? S.shoes.find(x => x.id === id) : { id: uid('s') };
+  Object.assign(s, { name, brand: f.brand.value.trim(), use: f.use.value, purchaseDate: f.purchase.value || '', initialKm: initial, limitKm: limit, status: f.status.value, memo: f.memo.value.trim() });
+  if (!id) S.shoes.push(s); syncShoePacking(); save(); closeSheet(); render();
+}
+function deleteShoe(id) {
+  const s = S.shoes.find(x => x.id === id); if (!s || !confirm('「' + s.name + '」を削除します。この靴の記録は「シューズ未選択」になります。よろしいですか？')) return;
+  S.shoes = S.shoes.filter(x => x.id !== id); S.workouts.forEach(w => { if (w.shoeId === id) w.shoeId = null; }); S.events.forEach(e => { if (e.shoeId === id) e.shoeId = null; });
+  if (S.settings.defaultShoeId === id) S.settings.defaultShoeId = null; syncShoePacking(); save(); closeSheet(); render();
+}
+
+
+/* ---------------- 結果・振り返り ---------------- */
+const SAT = ['未選択', '1 不満', '2 ややイマイチ', '3 ふつう', '4 満足', '5 大満足'];
+const stars = n => n ? '<span aria-label="満足度 ' + n + '／5">' + '★'.repeat(n) + '☆'.repeat(5 - n) + '</span>' : '';
+function pbBadge(p) { if (!p || !p.isBest) return ''; return p.isUpdate ? '<span class="badge t-race">🏅 自己ベスト更新</span>' : (p.isFirst ? '<span class="badge">初めての記録</span>' : '<span class="badge t-race">🏅 自己ベスト</span>'); }
+function viewReview() {
+  if (ui.reviewId) { const ev = S.events.find(e => e.id === ui.reviewId); if (ev) return reviewDetail(ev); ui.reviewId = null; }
+  const today = RE.todayStr(), pb = RE.pbInfo(S.events), list = S.events.filter(e => e.date <= today || e.result).sort((a, b) => (a.date < b.date ? 1 : -1));
+  let h = '<div class="topbar"><h1>🏅 振り返り</h1></div>';
+  if (!list.length) return h + '<div class="card center"><p>大会が終わると、ここで結果を入力して振り返れます。</p></div>';
+  h += list.map(e => '<div class="card tap" role="button" tabindex="0" data-act="' + (e.result ? 'reviewOpen' : 'openResult') + '" data-id="' + e.id + '"><div class="row-between"><b>' + esc(e.name) + '</b>' + pbBadge(pb[e.id]) + '</div>' +
+    '<p class="small muted">' + esc(RE.fmtFull(e.date)) + '　' + esc(CFG.eventTypes[e.type].label) + '</p>' +
+    (e.result ? '<p class="wk-main">' + esc(resultLine(e)) + '</p>' + (e.result.satisfaction ? '<p class="small">' + stars(e.result.satisfaction) + '</p>' : '') : '<p class="status lv-warn">📝 結果を入力する</p>') + '</div>').join('');
+  return h;
+}
+function kvRow(k, v) { return v ? '<dt>' + esc(k) + '</dt><dd>' + v + '</dd>' : ''; }
+function noteCard(title, text) { return text ? '<div class="card"><h4>' + esc(title) + '</h4><p class="pre">' + esc(text) + '</p></div>' : ''; }
+function reviewDetail(ev) {
+  const r = ev.result, km = RE.eventKm(ev), pb = RE.pbInfo(S.events)[ev.id];
+  let h = '<div class="topbar"><button class="btn small" data-act="reviewBack">◀ 一覧へ</button><button class="btn small" data-act="openResult" data-id="' + ev.id + '">' + (r ? '編集' : '結果を入力') + '</button></div>';
+  h += '<div class="card hero"><h2>' + esc(ev.name) + '</h2><p class="muted">' + esc(RE.fmtFull(ev.date)) + '　' + esc(CFG.eventTypes[ev.type].label) + (km ? '（' + RE.formatKm(km) + 'km）' : '') + '</p>';
+  if (!r) return h + '<p>まだ結果が入力されていません。</p></div>';
+  const an = RE.lapAnalysis(ev, r);
+  if (r.status === 'finished') {
+    h += '<div class="count">' + esc(RE.formatDuration(r.finishSec) || '—') + '</div>';
+    if (an && an.delta) h += '<p><b>目標 ' + esc(RE.formatDuration(ev.goalSec)) + ' より ' + esc(signedTime(an.delta.sec)) + '</b>（' + (an.delta.achieved ? '達成' : '未達') + '）</p>';
+    if (an) h += '<p class="small">平均ペース ' + esc(paceTxt(an.avgPaceSec)) + (an.goalPaceSec ? '（目標 ' + esc(paceTxt(an.goalPaceSec)) + '）' : '') + '</p>';
+  } else h += '<div class="count">' + (r.status === 'dnf' ? '途中棄権' : '欠場') + '</div>';
+  h += '<p>' + pbBadge(pb) + (r.satisfaction ? ' ' + stars(r.satisfaction) : '') + '</p></div>';
+  const sh = S.shoes.find(s => s.id === r.shoeId);
+  const kv = kvRow('順位', r.rank ? esc(r.rank) : '') + kvRow('天気・気温', r.weather ? esc(wxSummary(r.weather)) : '') + kvRow('シューズ', sh ? esc(sh.name) + '（練習で ' + RE.formatKm(Math.round(RE.shoeTrainingKm(sh, S.workouts) * 10) / 10) + 'km）' : '');
+  if (kv) h += '<div class="card"><dl class="kv">' + kv + '</dl></div>';
+  if (an) {
+    if (an.hasSplits) {
+      h += '<h3>ラップ分析</h3><div class="card"><table class="pace-table"><thead><tr><th>区間</th><th>通過</th><th>ペース</th>' + (an.goalPaceSec ? '<th>目標比</th>' : '') + '</tr></thead><tbody>' +
+        an.rows.map(x => '<tr><td>' + RE.formatKm(x.fromKm) + '〜' + RE.formatKm(Math.round(x.toKm * 100) / 100) + 'km</td><td class="num">' + esc(RE.formatDuration(x.cumSec)) + '</td><td class="num">' + esc(RE.formatPace(x.paceSec)) + '</td>' +
+          (an.goalPaceSec ? '<td class="num">' + (Math.abs(x.diffSec) < 1 ? '±0' : esc(signedTime(x.diffSec)) + (x.diffSec > 0 ? ' 遅い' : ' 速い')) + '</td>' : '') + '</tr>').join('') + '</tbody></table>';
+      if (an.halves) h += '<p class="small">前半 ' + esc(RE.formatDuration(an.halves.firstSec)) + '／後半 ' + esc(RE.formatDuration(an.halves.secondSec)) + '（後半 ' + esc(signedTime(an.halves.diffSec)) + (an.halves.diffSec > 0 ? ' 遅い' : ' 速い') + '）</p>';
+      h += '</div>';
+    } else h += '<p class="small muted">5kmごとの通過タイムを入力すると、ラップ分析ができます（編集から入力）。</p>';
+  }
+  const tr = RE.trainingSummary(ev, S.workouts);
+  if (tr) h += '<h3>大会までの練習</h3><div class="card"><dl class="kv">' + kvRow('走った距離', RE.formatKm(Math.round(tr.doneKm * 10) / 10) + 'km（計画 ' + RE.formatKm(Math.round(tr.plannedKm * 10) / 10) + 'km' + (tr.rate != null ? '・消化率 ' + Math.round(tr.rate * 100) + '%' : '') + '）') +
+    kvRow('練習回数', tr.runs + '回（計画 ' + tr.plannedRuns + '回）') + kvRow('期間・週平均', tr.weeks + '週間・' + RE.formatKm(Math.round(tr.avgWeekKm * 10) / 10) + 'km/週') + kvRow('ピーク週', RE.formatKm(Math.round(tr.peakWeekKm * 10) / 10) + 'km') + kvRow('最長の練習', RE.formatKm(Math.round(tr.longestKm * 10) / 10) + 'km') + '</dl></div>';
+  const ins = RE.reviewInsights(an, tr);
+  if (ins.length) h += '<h3>ひとこと所見</h3><div class="card notice-info">' + ins.map(t => '<p>💡 ' + esc(t) + '</p>').join('') + '<p class="xs">' + esc(TX.review.disclaimer) + '</p></div>';
+  h += noteCard('ペース配分', r.pacing) + noteCard('補給・水分', r.fuel) + noteCard('ウエア・シューズ', r.wear) + noteCard('👍 良かった点', r.good) + noteCard('🔧 課題', r.improve) + noteCard('🎯 次回に向けて', r.next) + noteCard('メモ', r.memo);
+  return h + '<div class="btns"><button class="btn danger small" data-act="deleteResult" data-id="' + ev.id + '">この結果を削除</button></div>';
+}
+function openResult(id) {
+  const ev = S.events.find(e => e.id === id); if (!ev) return;
+  const r = ev.result || { status: 'finished', finishSec: null, rank: '', weather: null, shoeId: ev.shoeId || null, satisfaction: null, splits: [], pacing: '', fuel: '', wear: '', good: '', improve: '', next: '', memo: '' };
+  const km = RE.eventKm(ev), step = CFG.review.splitStepKm, marks = []; if (km) for (let x = step; x < km - 0.01; x += step) marks.push(x);
+  const spv = m => { const x = r.splits.find(q => Math.abs(q.km - m) < 0.01); return x ? RE.formatDuration(x.sec) : ''; };
+  const ta = (n, label, ph) => '<label>' + label + '<textarea name="' + n + '" placeholder="' + esc(ph || '') + '">' + esc(r[n]) + '</textarea></label>';
+  const html = '<form id="rf" onsubmit="return false"><p class="small">' + esc(ev.name) + '（' + esc(RE.fmtMD(ev.date)) + '）</p>' +
+    '<label>結果<select name="status">' + opt('finished', '完走', r.status) + opt('dnf', '途中棄権', r.status) + opt('dns', '欠場', r.status) + '</select></label>' +
+    '<label>完走タイム（ネット・時:分:秒）<input name="finish" inputmode="numeric" value="' + esc(RE.formatDuration(r.finishSec)) + '" placeholder="例：1:58:42"></label><p class="small" id="rpreview"></p>' +
+    '<label>順位（任意）<input name="rank" value="' + esc(r.rank) + '" placeholder="例：総合1234位／男子40代56位"></label>' +
+    '<label>満足度<select name="sat">' + SAT.map((t, i) => opt(i || '', t, r.satisfaction || '')).join('') + '</select></label>' +
+    '<label>使用したシューズ<select name="shoe">' + shoeOptions(r.shoeId, true) + '</select></label>' +
+    (marks.length ? '<h3>' + step + 'kmごとの通過タイム（任意）</h3><p class="xs muted">スタートからの通過タイム（時:分:秒）。入れるとラップ分析ができます。</p><div class="grid2">' + marks.map(m => '<label>' + RE.formatKm(m) + 'km<input name="sp_' + m + '" inputmode="numeric" value="' + esc(spv(m)) + '" placeholder="0:28:30"></label>').join('') + '</div>' : '') +
+    '<h3>当日の天気・気温</h3>' + wxFields(r.weather, 'result', ev.date, '', true) +
+    '<h3>振り返りメモ</h3>' + ta('pacing', 'ペース配分', '前半は抑えられた？ どこで落ちた？') + ta('fuel', '補給・水分', 'いつ何をどれだけ？ 足りた？') + ta('wear', 'ウエア・シューズ', '寒かった／暑かった、靴の具合など') +
+    ta('good', '👍 良かった点') + ta('improve', '🔧 課題（次の大会の画面にも表示されます）') + ta('next', '🎯 次回に向けて（次の大会の画面にも表示されます）') + ta('memo', 'メモ') +
+    '<div class="btns"><button class="btn primary grow" data-act="saveResult" data-id="' + id + '">保存</button>' + (ev.result ? '<button class="btn danger" data-act="deleteResult" data-id="' + id + '">削除</button>' : '') + '</div></form>';
+  openSheet(ev.result ? '結果・振り返りを編集' : '結果・振り返りを入力', html, () => {
+    const f = fm('#rf'); if (!f) return; const fin = RE.parseDuration(f.finish.value), out = $('#rpreview');
+    f.finish.disabled = f.status.value !== 'finished';
+    out.textContent = (fin && km && f.status.value === 'finished') ? '平均ペース：' + paceTxt(fin / km) + (ev.goalSec > 0 ? '／目標比 ' + signedTime(fin - ev.goalSec) : '') : '';
+  });
+}
+function saveResult(id) {
+  const ev = S.events.find(e => e.id === id), f = fm('#rf'); if (!ev || !f) return;
+  const status = f.status.value; let fin = null;
+  if (status === 'finished') { fin = RE.parseDuration(f.finish.value); if (!fin) return toast('完走タイムを入力してください（例：1:58:42）。'); }
+  const km = RE.eventKm(ev), step = CFG.review.splitStepKm, splits = []; let prev = 0;
+  if (km) for (let x = step; x < km - 0.01; x += step) {
+    const raw = f['sp_' + x] ? f['sp_' + x].value.trim() : ''; if (!raw) continue;
+    const sec = RE.parseDuration(raw); if (!sec) return toast(RE.formatKm(x) + 'kmの通過タイムの形式を確認してください。');
+    if (sec <= prev) return toast(RE.formatKm(x) + 'kmの通過タイムが、前の地点より短くなっています。');
+    if (fin && sec >= fin) return toast(RE.formatKm(x) + 'kmの通過タイムが、完走タイム以上になっています。');
+    splits.push({ km: x, sec }); prev = sec;
+  }
+  const sat = parseInt(f.sat.value, 10);
+  ev.result = { status, finishSec: fin, rank: f.rank.value.trim(), weather: readWx(f), shoeId: f.shoe.value || null, satisfaction: sat >= 1 && sat <= 5 ? sat : null, splits,
+    pacing: f.pacing.value.trim(), fuel: f.fuel.value.trim(), wear: f.wear.value.trim(), good: f.good.value.trim(), improve: f.improve.value.trim(), next: f.next.value.trim(), memo: f.memo.value.trim() };
+  save(); closeSheet(); ui.tab = 'review'; ui.reviewId = id; render(); window.scrollTo(0, 0);
+}
+
+/* ---------------- 大会情報の自動取得（オプトイン） ---------------- */
+function feedStatusText() {
+  const f = S.settings.eventFeed, u = EF.validateUrl(f.url);
+  if (!u) return '取得元のURLが未設定です（設定画面で入力してください）。';
+  const c = EF.cache();
+  if (!c || c.url !== u) return '未取得です。ボタンを押したときだけ通信します。';
+  return '取得済み ' + c.events.length + '件' + (c.updatedAt ? '（取得元の更新日 ' + c.updatedAt + '）' : '') + '／最終取得 ' + dtTxt(c.fetchedAt);
+}
+function feedRowHtml() {
+  if (!EF.isEnabled(S.settings)) return '';
+  return '<div class="row-between"><span class="xs muted" data-role="feedStatus">' + esc(feedStatusText()) + '</span><button type="button" class="btn small" data-act="feedFetch">🛰 大会情報を更新</button></div>';
+}
+function refreshNames() {
+  const dl = $('#evNames'); if (dl) dl.innerHTML = RE.suggestNames(S.events, EF.entries(S.settings)).map(n => '<option value="' + esc(n) + '"></option>').join('');
+}
+const FEED_SAMPLE = '{\n  "version": 1,\n  "updatedAt": "2026-10-14",\n  "events": [\n    {\n      "name": "神戸マラソン",\n      "aliases": ["Kobe Marathon"],\n      "date": "2026-11-15",\n      "startTime": "09:00",\n      "type": "full",\n      "place": "神戸市",\n      "url": "https://www.kobe-marathon.net/",\n      "note": "公式サイトで確認してください"\n    }\n  ]\n}\n// type: full / half / 10k / 5k / fun（funのときは distanceKm も指定）';
+function feedCardHtml() {
+  const on = EF.isEnabled(S.settings), f = S.settings.eventFeed;
+  let h = '<div class="card"><div class="switch-row"><label class="check" style="margin:0"><input type="checkbox" id="feedSwitch" data-act-change="toggleFeed"' + (on ? ' checked' : '') + '> 大会情報の自動取得</label></div>' +
+    '<p class="xs muted">オンにすると、あなたが設定した取得元（https のURL）から大会の一覧を読み込み、イベント名の入力で開催日・スタート時刻などを自動入力できます。「大会情報を更新」を押したときだけ通信し、入力した大会名は送信しません。</p>';
+  if (on) h += '<label>取得元のURL（JSON）<input id="feedUrl" inputmode="url" value="' + esc(f.url) + '" placeholder="https://raw.githubusercontent.com/…/events.json"></label>' +
+    '<div class="btns"><button class="btn small" data-act="feedSaveUrl">URLを保存</button><button class="btn small primary" data-act="feedFetch">🛰 大会情報を更新</button></div>' +
+    '<p class="small" data-role="feedStatus">' + esc(feedStatusText()) + '</p>' +
+    '<details><summary class="small">取得元JSONの形式を見る</summary><pre class="code">' + esc(FEED_SAMPLE) + '</pre><p class="xs muted">GitHubに置いたJSONの「raw」のURLなどが使えます。取得元は、他のサイトからの読み取り（CORS）を許可している必要があります。</p></details>' +
+    '<div class="btns"><button class="btn danger small" data-act="clearFeed">取得した大会情報を削除</button></div>';
+  return h + '</div>';
+}
+function openFeedConsent() {
+  openSheet('大会情報の自動取得について', '<ul><li>大会情報を取得するため、あなたが設定した取得元のURL（https）にアクセスします。アクセス先には、通常のWebアクセスと同様に、IPアドレスや端末の情報が伝わります。</li><li>入力した大会名は送信しません。取得した一覧を、この端末の中で照合します。</li><li>取得元の内容や利用条件は、取得元の運営者が定めるものです。確認と利用は自己責任で行ってください。</li><li>開催日・スタート時刻などは、正確性が保証されません。必ず公式サイトで確認してください。</li><li>いつでもオフに戻せます。</li></ul>' +
+    '<label class="check"><input type="checkbox" id="feedConsentChk"> 上記を理解し、同意します</label><div class="btns"><button class="btn primary grow" id="feedConsentOk" data-act="feedConsentOk" disabled>同意してオンにする</button><button class="btn" data-act="feedConsentNo">キャンセル</button></div>');
+}
+async function doFeedFetch(btn) {
+  if (!EF.isEnabled(S.settings)) return;
+  const setS = t => document.querySelectorAll('[data-role=feedStatus]').forEach(x => { x.textContent = t; });
+  btn.disabled = true; setS('取得中…');
+  try {
+    await EF.fetchFeed(S.settings); setS(feedStatusText()); refreshNames();
+    if (fm('#ef') && !lastAuto) lookupAutofill(fm('#ef'), sheetEventId);
+  } catch (e) {
+    const m = e && e.message;
+    setS(m === 'nourl' ? '取得元のURL（https://…）を設定画面で入力してください。' : m === 'format' ? '取得元の形式が正しくありません。' : m === 'toolarge' ? 'データが大きすぎます。' : '取得できませんでした。登録済みの大会はそのまま使えます。');
+  }
+  btn.disabled = false;
+}
+
+/* ---------------- 設定 ---------------- */
+function viewSettings() {
+  const st = S.settings, on = W.isEnabled(st);
+  let h = '<div class="topbar"><h1>⚙️ 設定</h1></div><p class="small muted">このアプリは初期状態では外部と通信しません。</p>';
+  h += '<div class="card"><div class="switch-row"><label class="check" style="margin:0"><input type="checkbox" id="wxSwitch" data-act-change="toggleWeather"' + (on ? ' checked' : '') + '> 天気の自動取得</label></div>' +
+    '<p class="xs muted">オンにすると、入力した地名や位置情報が外部の天気サービス（Open-Meteo）に送信されます。「天気を取得」ボタンを押したときだけ通信します。</p>';
+  if (on) h += '<h4>よく走る場所（練習日の天気に使用）</h4>' + placeBoxHtml('home', st.homeLocation, g => { S.settings.homeLocation = g; save(); }) +
+    '<div class="btns"><button class="btn danger small" data-act="clearWx">保存した取得結果・位置情報を削除</button></div>';
+  else if (st.homeLocation) h += '<div class="btns"><button class="btn danger small" data-act="clearWx">保存した取得結果・位置情報を削除</button></div>';
+  h += '</div>' + feedCardHtml() + '<div class="card"><label>標準のシューズ（新しい記録に最初から選ばれます）<select data-act-change="defShoe">' + shoeOptions(st.defaultShoeId, true) + '</select></label></div>';
+  h += '<h3>データの書き出し・読み込み</h3><div class="card"><label class="check"><input type="checkbox" id="expLoc"> 位置情報・地名を含める（初期値は含めない）</label>' +
+    '<div class="btns"><button class="btn" data-act="exportData">⬇ JSONを書き出す</button><button class="btn" data-act="importPick">⬆ JSONを読み込む</button></div>' +
+    '<input type="file" id="importFile" accept=".json,application/json" hidden><p class="xs muted">読み込みでは設定（天気の自動取得など）は変わりません。自動取得は、読み込んだ人が自分でオンにします。</p></div>';
+  h += '<div class="card"><div class="btns"><button class="btn danger small" data-act="resetAll">すべてのデータを削除してサンプルに戻す</button></div></div>';
+  return h + '<p class="disclaimer">' + esc(TX.disclaimer) + '</p>';
+}
+function openConsent() {
+  openSheet('天気の自動取得について', '<ul><li>天気の取得のために、入力した地名や位置情報を、外部の天気サービス（Open-Meteo）に送信します。</li><li>Open-Meteoの利用条件（非商用の範囲、アクセス回数の目安など）は、利用する本人が確認し、自己責任で利用してください。</li><li>予報の内容や精度は保証されません。取得結果にかかわらず、ウエアや安全面の最終判断は本人が行ってください。</li><li>いつでもオフに戻せます。</li></ul>' +
+    '<label class="check"><input type="checkbox" id="consentChk"> 上記を理解し、同意します</label><div class="btns"><button class="btn primary grow" id="consentOk" data-act="consentOk" disabled>同意してオンにする</button><button class="btn" data-act="consentNo">キャンセル</button></div>');
+}
+function doExport() {
+  const data = RE.exportData(S, $('#expLoc').checked), blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'running-event-' + RE.todayStr() + '.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast(data.includesLocation ? '位置情報・地名を含めて書き出しました。' : '位置情報・地名は含めずに書き出しました。');
+}
+function doImport(file) {
+  const rd = new FileReader();
+  rd.onerror = () => toast('ファイルを読み込めませんでした。');
+  rd.onload = () => {
+    const r = RE.parseImport(String(rd.result)); if (r.error) return toast(r.error);
+    if (!confirm('大会' + r.counts.events + '件・練習' + r.counts.workouts + '件・シューズ' + r.counts.shoes + '足を読み込みます。現在のデータは置き換わります（設定は変わりません）。よろしいですか？')) return;
+    Object.assign(S, r.data); const s = S.settings; if (s.defaultShoeId && !S.shoes.some(x => x.id === s.defaultShoeId)) s.defaultShoeId = null;
+    syncShoePacking(); save(); render(); toast('読み込みました。');
+  };
+  rd.readAsText(file);
+}
+function clearWeatherData() {
+  if (!confirm('保存した天気の取得結果と位置情報（よく走る場所・大会の位置）を削除します。よろしいですか？')) return;
+  W.clearCache(); S.settings.homeLocation = null; S.events.forEach(e => { e.placeGeo = null; if (e.weather && e.weather.source === 'auto') e.weather = null; });
+  S.workouts.forEach(w => { if (w.weather && w.weather.source === 'auto') w.weather = null; }); save(); render(); toast('削除しました。');
+}
+
+/* ---------------- 描画・イベント ---------------- */
+const TABS = [['home', '🏃', '大会'], ['train', '📅', '練習'], ['day', '🏁', '当日'], ['review', '🏅', '振り返り'], ['shoes', '👟', 'シューズ'], ['settings', '⚙️', '設定']];
+function render() {
+  const views = { home: viewHome, train: viewTrain, day: viewDay, review: viewReview, shoes: viewShoes, settings: viewSettings };
+  $('#main').innerHTML = views[ui.tab]();
+  $('#nav').innerHTML = TABS.map(t => '<button data-act="goTab" data-tab="' + t[0] + '"' + (ui.tab === t[0] ? ' aria-current="page"' : '') + '><span class="ico" aria-hidden="true">' + t[1] + '</span>' + t[2] + '</button>').join('');
+}
+const actions = {
+  goTab: el => { ui.tab = el.dataset.tab; if (ui.tab === 'review') ui.reviewId = null; render(); window.scrollTo(0, 0); },
+  openResult: el => openResult(el.dataset.id), saveResult: el => saveResult(el.dataset.id),
+  deleteResult: el => { const ev = S.events.find(e => e.id === el.dataset.id); if (ev && confirm('この大会の結果と振り返りを削除します。よろしいですか？')) { ev.result = null; save(); closeSheet(); render(); } },
+  reviewOpen: el => { ui.tab = 'review'; ui.reviewId = el.dataset.id; render(); window.scrollTo(0, 0); },
+  reviewBack: () => { ui.reviewId = null; render(); window.scrollTo(0, 0); },
+  closeSheet,
+  newEvent: () => eventSheet(null), editEvent: el => eventSheet(el.dataset.id), saveEvent: el => saveEvent(el.dataset.id || null), deleteEvent: el => deleteEvent(el.dataset.id),
+  openPlanGen, previewPlan, applyPlan,
+  openMenuHub, openMenuImport, menuPreview, menuApply, openMenuBuilder, openCareEdit, careSave, careSample, menuExport,
+  menuPickFile: () => $('#menuFile').click(), menuSample: () => { const f = fm('#mf'); if (f) f.text.value = MTX.csvExample; },
+  bdPrev: () => bdMove(-1), bdNext: () => bdMove(1), bdCopy, bdClear, bdSave,
+  weekMove: el => { ui.weekStart = RE.addDays(ui.weekStart, +el.dataset.d); render(); }, weekToday: () => { ui.weekStart = RE.mondayOf(RE.todayStr()); render(); },
+  addW: el => openWorkout(null, el.dataset.date), editW: el => openWorkout(el.dataset.id), saveW: el => saveW(el.dataset.id || null),
+  deleteW: el => { if (confirm('この練習の記録を削除します。よろしいですか？')) { S.workouts = S.workouts.filter(w => w.id !== el.dataset.id); save(); closeSheet(); render(); } },
+  toggleDone: (el, e) => { e.stopPropagation(); const w = S.workouts.find(x => x.id === el.dataset.id); if (w) { w.done = !w.done; save(); render(); } },
+  fetchWx: el => doFetchWx(el), placeSearch, placeHere, placePick: el => { const box = el.closest('.placebox'); placePicked(box, placeBoxes[box.dataset.id].results[+el.dataset.i]); },
+  addTL: () => openTL(null), editTL: el => openTL(el.dataset.id),
+  saveTL: el => { const f = fm('#tf'); if (!/^\d{2}:\d{2}$/.test(f.time.value)) return toast('時刻を入力してください。'); const id = el.dataset.id, x = id ? S.dayItems.find(d => d.id === id) : { id: uid('d'), eventId: S.currentEventId };
+    Object.assign(x, { time: f.time.value, title: f.title.value.trim() || '予定', memo: f.memo.value.trim() }); if (!id) S.dayItems.push(x); save(); closeSheet(); render(); },
+  deleteTL: el => { S.dayItems = S.dayItems.filter(d => d.id !== el.dataset.id); save(); closeSheet(); render(); },
+  addTLfrom: el => { toast(addTL(cur(), el.dataset.time, el.dataset.title) ? 'タイムラインに追加しました。' : 'すでに追加されています。'); save(); render(); },
+  addBasicTL: () => { const ev = cur(); let n = 0; [[-240, '起床'], [-180, '朝食'], [-120, '移動'], [-90, '受付'], [-60, '荷物預け'], [0, 'スタート']].forEach(a => { if (addTL(ev, RE.timeAddHours(ev.startTime, a[0]), a[1])) n++; }); save(); render(); toast(n + '件追加しました。時刻は目安なので、編集してください。'); },
+  addFuelTL: () => { const ev = cur(), info = raceInfo(ev); let n = 0; info.f.items.forEach(i => { if (addTL(ev, RE.timeAddHours(ev.startTime, i.atMin), '補給' + (i.km ? '（約' + i.km + 'km）' : ''))) n++; }); save(); render(); toast(n + '件追加しました。'); },
+  togglePack: el => { const p = S.packing.find(x => x.id === el.dataset.id); if (p) { p.checked = !p.checked; save(); render(); } },
+  delPack: el => { S.packing = S.packing.filter(x => x.id !== el.dataset.id); save(); render(); },
+  addPack: () => { const t = $('#packNew').value.trim(); if (!t) return; S.packing.push({ id: uid('p'), eventId: S.currentEventId, text: t, checked: false, auto: null }); save(); render(); },
+  packWear: () => { const ev = cur(), a = RE.wearAdvice(ev.weather, 'race'); if (!a) return; let n = 0; a.packable.forEach(t => { if (!S.packing.some(p => p.eventId === ev.id && p.text === t)) { S.packing.push({ id: uid('p'), eventId: ev.id, text: t, checked: false, auto: null }); n++; } }); save(); render(); toast(n + '件を持ち物に追加しました。'); },
+  editEvWx: openEvWx,
+  saveEvWx: () => { const ev = cur(); ev.weather = readWx($('#xf')); save(); closeSheet(); render(); },
+  newShoe: () => openShoe(null), editShoe: el => openShoe(el.dataset.id), saveShoe: el => saveShoe(el.dataset.id || null), deleteShoe: el => deleteShoe(el.dataset.id),
+  consentOk: () => { S.settings.consent = { at: Date.now() }; S.settings.autoWeather = true; save(); closeSheet(); render(); toast('天気の自動取得をオンにしました。'); },
+  consentNo: () => { closeSheet(); render(); },
+  clearWx: clearWeatherData, feedFetch: el => doFeedFetch(el),
+  feedSaveUrl: () => { const u = EF.validateUrl($('#feedUrl').value); if (!u) return toast('https:// から始まるURLを入力してください。'); S.settings.eventFeed.url = u; save(); render(); toast('URLを保存しました。「大会情報を更新」を押すと取得します。'); },
+  feedConsentOk: () => { S.settings.eventFeed.consent = { at: Date.now() }; S.settings.eventFeed.enabled = true; save(); closeSheet(); render(); toast('オンにしました。取得元のURLを入力して、「大会情報を更新」を押してください。'); },
+  feedConsentNo: () => { closeSheet(); render(); },
+  clearFeed: () => { if (confirm('取得した大会情報を削除します。よろしいですか？')) { EF.clearCache(); render(); toast('削除しました。'); } }, exportData: doExport, importPick: () => $('#importFile').click(),
+  resetAll: () => { if (confirm('すべてのデータを削除して、サンプルデータに戻します。よろしいですか？（元に戻せません）')) { W.clearCache(); EF.clearCache(); S = seed(); syncShoePacking(); save(); ui.tab = 'home'; render(); } }
+};
+const changes = {
+  switchEvent: el => { S.currentEventId = el.value; save(); render(); },
+  defShoe: el => { S.settings.defaultShoeId = el.value || null; save(); toast('標準のシューズを設定しました。'); },
+  toggleFeed: el => {
+    if (el.checked) { el.checked = false; openFeedConsent(); return; }
+    S.settings.eventFeed.enabled = false; S.settings.eventFeed.consent = null; save(); render(); toast('オフにしました。以後は通信しません。取得済みの大会情報は、ボタンで削除できます。');
+  },
+  toggleWeather: el => {
+    if (el.checked) { el.checked = false; openConsent(); return; }
+    S.settings.autoWeather = false; S.settings.consent = null; save(); render(); toast('オフにしました。以後は通信しません。保存済みの取得結果・位置情報は、下のボタンで削除できます。');
+  }
+};
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  if (t.matches('select,input')) return;
+  const a = actions[t.dataset.act]; if (a) { if (t.closest('form') && t.tagName === 'BUTTON') e.preventDefault(); a(t, e); }
+});
+document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.card.tap[role=button]')) { e.preventDefault(); e.target.click(); } if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset && t.dataset.actChange && changes[t.dataset.actChange]) return changes[t.dataset.actChange](t);
+  if (t.id === 'menuFile' && t.files[0]) { const rd = new FileReader(); rd.onerror = () => toast('ファイルを読み込めませんでした。'); rd.onload = () => { const f = fm('#mf'); if (f) { f.text.value = String(rd.result).slice(0, 500000); menuPreview(); } }; rd.readAsText(t.files[0]); t.value = ''; return; }
+  if (t.id === 'importFile' && t.files[0]) { doImport(t.files[0]); t.value = ''; }
+  if (t.id === 'consentChk') $('#consentOk').disabled = !t.checked;
+  if (t.id === 'feedConsentChk') $('#feedConsentOk').disabled = !t.checked;
+  if (!$('#sheet').hidden && sheetRefresh) sheetRefresh(e);
+});
+document.addEventListener('input', e => {
+  const t = e.target, box = t.closest && t.closest('.wxbox');
+  if (box && t.name && t.name.indexOf('wx_') === 0) { box.dataset.src = 'manual'; box.dataset.at = Date.now(); box.querySelector('[data-role=meta]').textContent = wxMeta({ source: 'manual', at: Date.now() }); }
+  if (!$('#sheet').hidden && sheetRefresh) sheetRefresh(e);
+});
+
+load(); render();
+})();
+
+</script>
+<script>
+/* オフラインで開けるようにする（https または localhost のときだけ。file:// では何もしない） */
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () { /* 失敗してもアプリは普通に使える */ }); });
+}
+</script>
+</body>
+</html>
