@@ -205,6 +205,9 @@ details.card > summary { cursor: pointer; font-weight: var(--weight-bold); min-h
 code { font-family: var(--font-mono); font-size: var(--font-size-xs); word-break: break-all; }
 .topbar .btns { display: flex; gap: var(--space-2); margin: 0; }
 
+.steps { margin: 0 0 var(--space-3); padding-left: 1.4em; }
+.steps li { margin-bottom: var(--space-3); }
+
 </style>
 <meta name="theme-color" content="#1f6f4a">
 <link rel="manifest" href="manifest.webmanifest">
@@ -334,7 +337,7 @@ const CONFIG = {
     sunnyItems: ['サングラス', '日焼け止め'],
     sunnyFromTempC: 15
   },
-  eventFeed: { cacheKey: 'running_event_app_feed_cache_v1', timeoutMs: 8000, staleHours: 24, maxEvents: 2000, maxBytes: 1000000, suggestMax: 500 },
+  eventFeed: { defaultPath: 'events.json', cacheKey: 'running_event_app_feed_cache_v1', timeoutMs: 8000, staleHours: 24, maxEvents: 2000, maxBytes: 1000000, suggestMax: 500 },
   review: { evenRatio: 0.01, fadeRatio: 0.05, nearRatio: 0.03, lowRateRatio: 0.7, splitStepKm: 5, lessonCount: 2 },
   shoes: { warnRatio: 0.8, overRatio: 1.0, defaultLimitKm: 600, limitRangeKm: [500, 800],
            raceTrialMinKm: 10, raceNearRatio: 0.8 },
@@ -403,12 +406,14 @@ const TEXT = {
    - checked は、この情報を確認した日。追加・更新はこの配列を書き換えるだけでOK
    - 自分が登録した大会も、次回から候補・自動入力の元になります
    --------------------------------------------------------------- */
+const PREFS = ['北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県','茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県','新潟県','富山県','石川県','福井県','山梨県','長野県','岐阜県','静岡県','愛知県','三重県','滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県','鳥取県','島根県','岡山県','広島県','山口県','徳島県','香川県','愛媛県','高知県','福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'];
 const EVENT_CATALOG = [
-  { name: '神戸マラソン', aliases: ['Kobe Marathon'], date: '2026-11-15', startTime: '09:00', type: 'full', place: '神戸市', url: 'https://www.kobe-marathon.net/', checked: '2026-10-14', note: '開催日は公式サイトの記載。スタート時刻は参考サイトの情報です。' },
-  { name: '大阪マラソン', aliases: ['Osaka Marathon'], date: '2027-02-28', startTime: '09:15', type: 'full', place: '大阪市', url: 'https://www.osaka-marathon.com/', checked: '2026-10-14', note: '開催日は大阪府の発表。スタート時刻は参考サイトの情報（第1ウェーブ）で、ウェーブにより異なります。' },
-  { name: '東京マラソン', aliases: ['Tokyo Marathon'], date: '2027-03-07', startTime: '09:10', type: 'full', place: '東京都', url: 'https://www.marathon.tokyo/', checked: '2026-10-14', note: '開催日は公式サイトの記載。スタート時刻は参考サイトの情報です。' },
-  { name: '京都マラソン', aliases: ['Kyoto Marathon'], date: '2027-02-21', startTime: '09:00', type: 'full', place: '京都市', url: 'https://www.kyoto-marathon.com/', checked: '2026-10-14', note: '開催日・スタート時刻は参考サイトの情報です。' },
-  { name: '福岡マラソン', aliases: ['Fukuoka Marathon'], date: '2026-11-08', startTime: '', type: 'full', place: '福岡市', url: 'https://www.crossroadfukuoka.jp/event/11923', checked: '2026-10-14', note: '開催日は福岡市の発表。スタート時刻は未発表のため入力していません。' }
+  { name: '神戸マラソン', region: '兵庫県', aliases: ['Kobe Marathon'], date: '2026-11-15', startTime: '09:00', type: 'full', place: '神戸市', url: 'https://www.kobe-marathon.net/', checked: '2026-10-14', note: '開催日は公式サイトの記載。スタート時刻は参考サイトの情報です。' },
+  { name: '大阪マラソン', region: '大阪府', aliases: ['Osaka Marathon'], date: '2027-02-28', startTime: '09:15', type: 'full', place: '大阪市', url: 'https://www.osaka-marathon.com/', checked: '2026-10-14', note: '開催日は大阪府の発表。スタート時刻は参考サイトの情報（第1ウェーブ）で、ウェーブにより異なります。' },
+  { name: '東京マラソン', region: '東京都', aliases: ['Tokyo Marathon'], date: '2027-03-07', startTime: '09:10', type: 'full', place: '東京都', url: 'https://www.marathon.tokyo/', checked: '2026-10-14', note: '開催日は公式サイトの記載。スタート時刻は参考サイトの情報です。' },
+  { name: '京都マラソン', region: '京都府', aliases: ['Kyoto Marathon'], date: '2027-02-21', startTime: '09:00', type: 'full', place: '京都市', url: 'https://www.kyoto-marathon.com/', checked: '2026-10-14', note: '開催日・スタート時刻は参考サイトの情報です。' },
+  { name: '福岡マラソン', region: '福岡県', aliases: ['Fukuoka Marathon'], date: '2026-11-08', startTime: '', type: 'full', place: '福岡市', url: 'https://www.crossroadfukuoka.jp/event/11923', checked: '2026-10-14', note: '開催日は福岡市の発表。スタート時刻は未発表のため入力していません。' },
+  { name: '宝塚ハーフマラソン', region: '兵庫県', aliases: ['Takarazuka Half Marathon', '宝塚ハーフ'], date: '2026-12-20', startTime: '', type: 'half', place: '宝塚市', url: 'https://www.city.takarazuka.hyogo.jp/1060683/1060710/1061599/1021829/1002625/1056867/index.html', checked: '2026-10-17', note: '開催日は宝塚市のページの記載。スタート時刻は未確認のため入力していません。公式サイトで確認してください。' }
 ];
 
 /* ---------------------------------------------------------------
@@ -817,7 +822,7 @@ function sanitizeData(raw) {
     const km = CONFIG.eventTypes[type].km || numOrNull(e.distanceKm);
     return { id: withId(e, mk('e')), name: str(e.name, '無題の大会'), date: isValidDate(e.date) ? e.date : todayStr(), type, distanceKm: km > 0 ? km : null,
       goalSec: numOrNull(e.goalSec) > 0 ? numOrNull(e.goalSec) : null, place: str(e.place), placeGeo: sanitizeGeo(e.placeGeo),
-      startTime: /^\d{1,2}:\d{2}$/.test(str(e.startTime)) ? e.startTime : '', shoeId: str(e.shoeId) || null, weather: sanitizeWeather(e.weather), result: sanitizeResult(e.result) };
+      startTime: /^\d{1,2}:\d{2}$/.test(str(e.startTime)) ? e.startTime : '', url: /^https?:\/\//i.test(str(e.url)) ? str(e.url).slice(0, 500) : '', shoeId: str(e.shoeId) || null, weather: sanitizeWeather(e.weather), result: sanitizeResult(e.result) };
   });
   const shoes = arr(src.shoes).map(s => ({ id: withId(s, mk('s')), name: str(s.name, '名称未設定'), brand: str(s.brand), use: pick(s.use, Object.keys(CONFIG.shoeUses), 'training'),
     purchaseDate: isValidDate(s.purchaseDate) ? s.purchaseDate : '', initialKm: Math.max(0, numOrNull(s.initialKm) || 0),
@@ -835,7 +840,8 @@ function sanitizeData(raw) {
   const dayItems = arr(src.dayItems).filter(d => /^\d{1,2}:\d{2}$/.test(str(d.time))).map(d => ({ id: withId(d, mk('d')), eventId: eventIds.has(d.eventId) ? d.eventId : (events[0] ? events[0].id : null), time: d.time, title: str(d.title, '予定'), memo: str(d.memo) }));
   const packing = arr(src.packing).map(p => ({ id: withId(p, mk('p')), eventId: eventIds.has(p.eventId) ? p.eventId : (events[0] ? events[0].id : null), text: str(p.text, '持ち物'), checked: p.checked === true, auto: p.auto === 'shoe' ? 'shoe' : null }));
   const menus = {}; if (isObj(src.menus)) Object.keys(src.menus).forEach(k => { if (eventIds.has(k)) menus[k] = sanitizeMenu(src.menus[k]); });
-  return { events, shoes, workouts, dayItems, packing, menus, currentEventId: eventIds.has(src.currentEventId) ? src.currentEventId : (events[0] ? events[0].id : null) };
+  const myEvents = arr(src.myEvents).slice(0, 500).map(x => { const o = sanitizeFeedEvent(x); if (o) { o._feed = false; o._mine = true; } return o; }).filter(Boolean);
+  return { events, shoes, workouts, dayItems, packing, menus, myEvents, currentEventId: eventIds.has(src.currentEventId) ? src.currentEventId : (events[0] ? events[0].id : null) };
 }
 function sanitizeSettings(s) {
   s = isObj(s) ? s : {};
@@ -852,7 +858,7 @@ function sanitizeState(raw) {
 }
 /* 書き出し：設定（自動取得のオン・同意・よく走る場所）は含めない */
 function exportData(state, includeLocation) {
-  const copy = JSON.parse(JSON.stringify({ events: state.events, workouts: state.workouts, dayItems: state.dayItems, packing: state.packing, shoes: state.shoes, menus: state.menus || {}, currentEventId: state.currentEventId }));
+  const copy = JSON.parse(JSON.stringify({ events: state.events, workouts: state.workouts, dayItems: state.dayItems, packing: state.packing, shoes: state.shoes, menus: state.menus || {}, myEvents: state.myEvents || [], currentEventId: state.currentEventId }));
   if (!includeLocation) copy.events.forEach(e => { e.place = ''; e.placeGeo = null; });
   return { app: 'running-event-app', version: CONFIG.dataVersion, exportedAt: new Date().toISOString(), includesLocation: !!includeLocation, data: copy };
 }
@@ -868,6 +874,7 @@ function parseImport(text) {
 
 /* ---------------------------------------------------------------
    大会情報の自動取得（任意）。設定オン＋同意＋https のURLがあるときだけ動く。
+   ・取得元は、標準ではこのアプリと同じ場所の events.json（URL入力は不要）。変更も可能
    ・通信するのは取得元URLへの GET だけ（入力した大会名は送らない）
    ・取得した一覧は、この端末の中で名前と照合する
    ・ボタンを押したときだけ通信する（勝手に通信しない）
@@ -879,11 +886,17 @@ function sanitizeFeedEvent(x) {
   return { name, aliases: Array.isArray(x.aliases) ? x.aliases.filter(a => typeof a === 'string').slice(0, 10).map(a => a.slice(0, 100)) : [],
     date: isValidDate(x.date) ? x.date : '', startTime: (m && +m[1] < 24 && +m[2] < 60) ? pad(+m[1]) + ':' + m[2] : '',
     type: pick(x.type, Object.keys(CONFIG.eventTypes), 'fun'), distanceKm: km > 0 && km < 1000 ? km : null,
-    place: str(x.place).slice(0, 100), url: /^https?:\/\//i.test(str(x.url)) ? str(x.url).slice(0, 500) : '', note: str(x.note).slice(0, 300), _feed: true };
+    region: PREFS.includes(str(x.region)) ? str(x.region) : '', place: str(x.place).slice(0, 100), url: /^https?:\/\//i.test(str(x.url)) ? str(x.url).slice(0, 500) : '', note: str(x.note).slice(0, 300), _feed: true };
 }
 const EventFeed = {
   isEnabled(settings) { const f = settings && settings.eventFeed; return !!(f && f.enabled === true && f.consent && f.consent.at); },
   validateUrl(u) { try { const x = new URL(String(u || '').trim()); return x.protocol === 'https:' ? x.href : null; } catch (e) { return null; } },
+  /* 取得元を自分で入れなくても使えるよう、このアプリと同じ場所に置いた events.json を標準の取得元にする */
+  defaultUrl() {
+    try { if (typeof location === 'undefined') return null; const x = new URL(CONFIG.eventFeed.defaultPath, location.href); return (x.protocol === 'https:' || x.hostname === 'localhost' || x.hostname === '127.0.0.1') ? x.href : null; } catch (e) { return null; }
+  },
+  /* 実際に使うURL：自分で入れたURLがあればそれ（不正なら null）、空なら標準 */
+  effectiveUrl(settings) { const u = settings && settings.eventFeed && String(settings.eventFeed.url || '').trim(); return u ? EventFeed.validateUrl(u) : EventFeed.defaultUrl(); },
   /* 取得したJSONを検証して整える。形式が違えば null */
   parse(json) {
     if (!isObj(json) || !Array.isArray(json.events)) return null;
@@ -896,12 +909,12 @@ const EventFeed = {
   /* 照合に使える取得済みの大会（オフ、またはURLが違うときは空） */
   entries(settings) {
     if (!EventFeed.isEnabled(settings)) return [];
-    const c = EventFeed.cache(), u = EventFeed.validateUrl(settings.eventFeed.url);
+    const c = EventFeed.cache(), u = EventFeed.effectiveUrl(settings);
     return c && u && c.url === u ? c.events : [];
   },
   async fetchFeed(settings) {
     if (!EventFeed.isEnabled(settings)) throw new Error('disabled');
-    const url = EventFeed.validateUrl(settings.eventFeed.url); if (!url) throw new Error('nourl');
+    const url = EventFeed.effectiveUrl(settings); if (!url) throw new Error('nourl');
     const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), CONFIG.eventFeed.timeoutMs);
     try {
       const r = await fetch(url, { signal: ctl.signal, credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer' });
@@ -940,6 +953,7 @@ function lookupEvent(input, history, today, selfId, extra) {
     if (isValidDate(cat.date) && cat.date >= today) f.date = cat.date; else notes.push('次回の開催日は未登録です。');
     if (!cat.startTime) notes.push('スタート時刻は未登録です。');
     if (cat._feed) notes.push('取得した大会情報から入力しました。');
+    if (cat._mine) notes.push('自分の大会リストから入力しました。');
     if (cat.note) notes.push(cat.note);
   }
   if (hist) {
@@ -950,6 +964,54 @@ function lookupEvent(input, history, today, selfId, extra) {
     if (!f.date) notes.push('前回の登録は ' + fmtFull(hist.date) + ' です。今回の開催日を入力してください。');
   }
   return { label, fields: f, notes, url };
+}
+
+/* 部分一致の候補（「宝塚」→「宝塚ハーフマラソン」）。登録済みの大会リストと取得済みリストから探す */
+function searchEvents(input, extra, max) {
+  const n = normName(input); if (n.length < 2) return [];
+  const out = [], seen = new Set();
+  (extra || []).concat(EVENT_CATALOG).forEach(c => {
+    if (out.length >= (max || 6) || seen.has(c.name)) return;
+    if ([c.name].concat(c.aliases || []).some(x => normName(x).includes(n))) { seen.add(c.name); out.push(c.name); }
+  });
+  return out;
+}
+
+/* 大会を探す：名前（部分一致）・都道府県・期間で絞り込む。自分のリスト → 取得済みリスト → 内蔵リストの順 */
+function findEvents(q, extra, today, max) {
+  q = q || {};
+  const n = normName(q.q || ''), seen = new Set(), out = [];
+  (extra || []).concat(EVENT_CATALOG).forEach(c => {
+    const key = c.name + '|' + (c.date || ''); if (seen.has(key)) return; seen.add(key);
+    if (n && ![c.name].concat(c.aliases || []).some(x => normName(x).includes(n))) return;
+    if (q.region && c.region !== q.region) return;
+    if ((q.from || q.to) && !isValidDate(c.date)) return;
+    if (q.from && c.date < q.from) return;
+    if (q.to && c.date > q.to) return;
+    out.push(c);
+  });
+  const up = c => isValidDate(c.date) && c.date >= today;
+  out.sort((a, b) => (up(a) === up(b) ? ((a.date || '9999') < (b.date || '9999') ? -1 : 1) : (up(a) ? -1 : 1)));
+  return out.slice(0, max || 50);
+}
+/* 一覧の貼り付け（CSV/TSV）：大会名,開催日,スタート時刻,種目,都道府県,場所,URL */
+function parseEventList(text, today) {
+  const items = [], errors = [];
+  const typeMap = { full: 'full', フル: 'full', フルマラソン: 'full', half: 'half', ハーフ: 'half', ハーフマラソン: 'half', '10k': '10k', '10km': '10k', 十キロ: '10k', '5k': '5k', '5km': '5k', fun: 'fun', その他: 'fun', ファン: 'fun' };
+  String(text || '').split(/\r?\n/).forEach((raw, i) => {
+    const line = raw.trim(); if (!line || line[0] === '#' || /^大会名/.test(line)) return;
+    const c = line.split(/\t|,|，/).map(x => x.trim()), no = i + 1 + '行目：';
+    if (!c[0]) { errors.push(no + '大会名がありません'); return; }
+    let date = '', ds = (c[1] || '').normalize('NFKC').replace(/[年月\/\.]/g, '-').replace(/日/g, '').replace(/-+$/, '');
+    let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(ds);
+    if (m) date = m[1] + '-' + pad(+m[2]) + '-' + pad(+m[3]);
+    else if ((m = /^(\d{1,2})-(\d{1,2})$/.exec(ds))) { const y = +today.slice(0, 4); date = y + '-' + pad(+m[1]) + '-' + pad(+m[2]); if (date < today) date = (y + 1) + '-' + pad(+m[1]) + '-' + pad(+m[2]); }
+    if (c[1] && !isValidDate(date)) { errors.push(no + '開催日を読み取れません（' + c[1] + '）'); date = ''; }
+    const t = typeMap[(c[3] || '').normalize('NFKC').toLowerCase()] || 'fun';
+    const o = sanitizeFeedEvent({ name: c[0], date, startTime: (c[2] || '').normalize('NFKC'), type: t, region: c[4], place: c[5], url: c[6] });
+    if (o) { o._feed = false; o._mine = true; items.push(o); }
+  });
+  return { items, errors };
 }
 
 /* ---------------------------------------------------------------
@@ -1148,7 +1210,7 @@ function exportMenu(items, menu, name) {
     care: { weekly: Object.keys(m.care.weekly).reduce((a, i) => { a[WD_JA[i]] = m.care.weekly[i]; return a; }, {}), exercises: m.care.exercises } };
 }
 
-return { parseMenu, exportMenu, menuWeeks, menuLegend, careLine, copyWeek, finishItem, workoutsToItems, menuTypeFromText, isQuality, sanitizeMenu, normMenuDate, WD_JA, EventFeed, EVENT_CATALOG, normName, suggestNames, lookupEvent, lapAnalysis, trainingSummary, reviewInsights, pbInfo, lessonsFor, CONFIG, TEXT, pad, dayNum, fromDayNum, isValidDate, weekdayOf, todayStr, addDays, daysUntil, fmtMD, fmtFull, mondayOf,
+return { parseMenu, exportMenu, menuWeeks, menuLegend, careLine, copyWeek, finishItem, workoutsToItems, menuTypeFromText, isQuality, sanitizeMenu, normMenuDate, WD_JA, EventFeed, EVENT_CATALOG, PREFS, findEvents, parseEventList, searchEvents, normName, suggestNames, lookupEvent, lapAnalysis, trainingSummary, reviewInsights, pbInfo, lessonsFor, CONFIG, TEXT, pad, dayNum, fromDayNum, isValidDate, weekdayOf, todayStr, addDays, daysUntil, fmtMD, fmtFull, mondayOf,
   parseKm, parsePace, parseDuration, formatPace, formatDuration, formatKm, solveTriad, eventKm, basePace, paceFor, predictSec, bucketOf,
   generatePlan, mergePlan, fuelPlan, hydrationPlan, wearAdvice, tempFromWeather, raceDuration, timeAddHours, dayAdvice,
   shoeTotalKm, shoeLastUsed, shoeStatus, shoeTrainingKm, raceShoeChecks, recordKm, Weather,
@@ -1186,7 +1248,12 @@ function load() {
   let raw = null;
   try { raw = localStorage.getItem(CFG.storageKey); } catch (e) { raw = null; }
   if (raw) { try { S = RE.sanitizeState(JSON.parse(raw)); return; } catch (e) { /* 壊れていたらサンプルに戻す */ } }
-  S = seed(); syncShoePacking(); save();
+  S = RE.sanitizeState({}); save(); // はじめて開いたときは空の状態から（サンプルは画面のボタンで入れられる）
+}
+function loadSample() {
+  if (S.events.length) return;
+  const s = seed(); ['events', 'workouts', 'shoes', 'dayItems', 'packing', 'menus', 'currentEventId'].forEach(k => { S[k] = s[k]; });
+  S.settings.defaultShoeId = s.settings.defaultShoeId; syncShoePacking(); save(); ui.tab = 'home'; render(); toast('サンプルを入れました。設定の「すべて削除」でいつでも消せます。');
 }
 function seed() {
   const t = RE.todayStr(), evDate = RE.addDays(t, 84);
@@ -1329,6 +1396,7 @@ function eventCardHtml(ev) {
     '<dt>目標ペース</dt><dd>' + (pace ? esc(pace) : '—') + '</dd>' +
     '<dt>スタート</dt><dd>' + (ev.startTime ? esc(ev.startTime) : '未設定') + '</dd>' +
     '<dt>開催場所</dt><dd>' + (ev.place ? esc(ev.place) : '未設定') + '</dd>' +
+    '<dt>公式ページ</dt><dd>' + (ev.url ? '<a href="' + esc(ev.url) + '" target="_blank" rel="noopener noreferrer">開く（外部サイト）</a>' : '未設定') + '</dd>' +
     '<dt>大会のシューズ</dt><dd>' + (sh ? esc(sh.name) : '未設定') + '</dd></dl>' +
     '<div class="btns"><button class="btn" data-act="editEvent" data-id="' + ev.id + '">編集</button>' +
     '<button class="btn primary grow" data-act="openMenuHub">📅 練習メニューを設定</button></div></div>';
@@ -1354,12 +1422,22 @@ function lessonsHtml(ev) {
   return '<div class="card notice-info"><h4>📝 これまでの振り返りから</h4><ul>' + ls.map(l => '<li><b>' + esc(l.name) + '（' + esc(RE.fmtFull(l.date)) + '）</b>' +
     (l.improve ? '<div class="pre">課題：' + esc(l.improve) + '</div>' : '') + (l.next ? '<div class="pre">次回に向けて：' + esc(l.next) + '</div>' : '') + '</li>').join('') + '</ul></div>';
 }
+function welcomeHtml() {
+  return '<div class="card hero"><h2>ようこそ</h2><p>参加する大会・目標・練習メニューを、自分で登録して使うアプリです。記録はこの端末の中にだけ保存され、他の人には見えません。</p></div>' +
+    '<div class="card"><ol class="steps"><li><b>大会を登録する</b><br><span class="small muted">大会名を入力すると、開催日やスタート時刻が入ることがあります。目標タイムもここで決めます。</span></li>' +
+    '<li><b>練習メニューを決める</b><br><span class="small muted">自動で作る／自分のメニューを取り込む／アプリの中で作る、から選べます。</span></li>' +
+    '<li><b>走って、記録する</b><br><span class="small muted">練習の完了、シューズの距離、大会後の振り返りまで残せます。</span></li></ol>' +
+    '<div class="btns"><button class="btn primary grow" data-act="openEventFinder">🔎 大会を探して登録</button><button class="btn grow" data-act="newEvent">自分で入力する</button></div>' +
+    '<div class="btns"><button class="btn" data-act="loadSample">サンプルで試してみる</button></div></div>';
+}
 function viewHome() {
   const ev = cur();
-  let h = '<div class="topbar"><h1>🏃 大会</h1><button class="btn small" data-act="newEvent">＋ 大会を追加</button></div>';
+  let h = '<div class="topbar"><h1>🏃 大会</h1><span class="btns"><button class="btn small" data-act="openEventFinder">🔎 大会を探す</button><button class="btn small" data-act="newEvent">＋ 追加</button></span></div>';
   if (S.events.length > 1) h += '<label>表示する大会<select data-act-change="switchEvent">' + S.events.map(e => opt(e.id, e.name + '（' + RE.fmtMD(e.date) + '）', ev.id)).join('') + '</select></label>';
-  if (!ev) return h + '<div class="card center"><p>まだ大会がありません。</p><button class="btn primary" data-act="newEvent">大会を登録する</button></div>';
-  h += eventCardHtml(ev) + reviewHomeCard(ev) + lessonsHtml(ev);
+  if (!ev) return h + welcomeHtml();
+  h += eventCardHtml(ev);
+  if (!S.workouts.some(w => w.eventId === ev.id)) h += '<div class="card notice-info"><h4>次は、練習メニューを決めましょう</h4><p class="small">自動で作る・自分のメニューを取り込む・アプリの中で作る、のどれでも設定できます。</p><div class="btns"><button class="btn primary grow" data-act="openMenuHub">📅 練習メニューを設定</button></div></div>';
+  h += reviewHomeCard(ev) + lessonsHtml(ev);
   RE.raceShoeChecks(ev, S.shoes, S.workouts).forEach(c => { h += '<div class="card notice-warn" role="alert">⚠️ ' + esc(c.text) + '</div>'; });
   const today = RE.todayStr(), tw = S.workouts.filter(w => w.eventId === ev.id && w.date === today);
   h += '<h3>今日の練習</h3>' + (tw.length ? tw.map(workoutCard).join('') : '<p class="muted small">今日の予定はありません。</p>');
@@ -1368,17 +1446,74 @@ function viewHome() {
   return h;
 }
 let lastAuto = '', sheetEventId = null;
+/* 照合・検索に使う追加分：自分の大会リスト＋取得済みの大会リスト */
+function extraEntries() { return (S.myEvents || []).concat(EF.entries(S.settings)); }
+let finderRes = [];
+function srcLabel(c) { return c._mine ? '自分のリスト' : c._feed ? '取得した情報' : '内蔵'; }
+function openEventFinder() {
+  const html = '<div id="finder"><label>大会名の一部<input name="q" autocomplete="off" placeholder="例：淀川"></label>' +
+    '<label>地域（都道府県）<select name="region"><option value="">指定なし</option>' + RE.PREFS.map(p => '<option>' + p + '</option>').join('') + '</select></label>' +
+    '<div class="grid2"><label>この日から<input type="date" name="from"></label><label>この日まで<input type="date" name="to"></label></div>' +
+    '<div id="finderOut"></div>' +
+    '<div class="btns"><button type="button" class="btn grow" data-act="openMyList">＋ 自分の大会リストに追加／貼り付け</button></div></div>';
+  openSheet('大会を探す', html, () => {
+    const r = $('#finder'); if (!r) return;
+    const g = n => r.querySelector('[name=' + n + ']').value;
+    const q = { q: g('q'), region: g('region'), from: g('from'), to: g('to') };
+    finderRes = RE.findEvents(q, extraEntries(), RE.todayStr(), 30);
+    const asked = q.q || q.region || q.from || q.to;
+    let h = '';
+    if (!asked) h = '<p class="small muted">大会名の一部、地域、期間のどれかを入れると、リストから探します。いまのリストは ' + (RE.EVENT_CATALOG.length + extraEntries().length) + ' 件です。</p>';
+    else if (!finderRes.length) h = '<p class="small muted">リストに見つかりません。</p>';
+    else h = finderRes.map((c, i) => '<div class="card"><b>' + esc(c.name) + '</b><p class="small">' + (RE.isValidDate(c.date) ? esc(RE.fmtFull(c.date)) : '開催日 未登録') + (c.startTime ? '　' + esc(c.startTime) + 'スタート' : '') + '</p>' +
+      '<p class="xs muted">' + esc([c.region, c.place, CFG.eventTypes[c.type] ? CFG.eventTypes[c.type].label : ''].filter(Boolean).join('・')) + '（' + srcLabel(c) + '）</p>' +
+      '<div class="btns"><button type="button" class="btn small primary" data-act="pickFound" data-i="' + i + '">この大会を登録</button>' + (c.url ? '<a class="btn small" href="' + esc(c.url) + '" target="_blank" rel="noopener noreferrer">公式・参考ページ</a>' : '') + '</div></div>').join('');
+    if (asked) h += '<p class="small"><a href="https://www.google.com/search?q=' + encodeURIComponent([q.q, q.region, '大会 開催日 スタート時刻'].filter(Boolean).join(' ')) + '" target="_blank" rel="noopener noreferrer">リストにない大会は、公式サイトを検索（外部サイト）</a>して、見つけたら「自分の大会リスト」に追加できます。</p>';
+    $('#finderOut').innerHTML = h;
+  });
+}
+function openMyList() {
+  const list = S.myEvents || [];
+  const html = '<form id="mf" onsubmit="return false"><p class="small muted">自分で調べた大会を、ここに追加しておくと、「大会を探す」や大会名の入力で候補に出ます。日付・時刻は公式サイトで確認した内容を入れてください。</p>' +
+    '<label>大会名<input name="name"></label><label>開催日<input type="date" name="date"></label><label>スタート時刻（任意）<input type="time" name="start"></label>' +
+    '<label>種目<select name="type">' + Object.keys(CFG.eventTypes).map(k => opt(k, CFG.eventTypes[k].label, 'half')).join('') + '</select></label>' +
+    '<label>都道府県<select name="region"><option value="">指定なし</option>' + RE.PREFS.map(p => '<option>' + p + '</option>').join('') + '</select></label>' +
+    '<label>開催場所（任意）<input name="place"></label><label>公式ページのURL（任意）<input name="url" inputmode="url" placeholder="https://"></label>' +
+    '<div class="btns"><button class="btn primary grow" data-act="myListAdd">リストに追加</button></div>' +
+    '<details class="card"><summary>一覧を貼り付けて追加</summary><p class="xs muted">1行に1大会。<code>大会名,開催日,スタート時刻,種目,都道府県,場所,URL</code>（カンマまたはタブ区切り。スプレッドシートからコピーしたものも可）</p>' +
+    '<textarea name="paste" rows="5" placeholder="淀川市民マラソン,2027/2/14,9:00,ハーフ,大阪府,大阪市,https://…"></textarea><div class="btns"><button class="btn" data-act="myListPaste">貼り付けた内容を追加</button></div></details>' +
+    '<h3>自分の大会リスト（' + list.length + '件）</h3>' + (list.length ? list.map((c, i) => '<div class="row-between"><span class="small">' + esc(c.name) + '（' + (RE.isValidDate(c.date) ? RE.fmtMD(c.date) : '日付なし') + '）</span><button type="button" class="btn small danger" data-act="myListDel" data-i="' + i + '">削除</button></div>').join('') : '<p class="small muted">まだありません。</p>') + '</form>';
+  openSheet('自分の大会リスト', html);
+}
+function myListAdd() {
+  const f = fm('#mf'), name = f.name.value.trim(); if (!name) return toast('大会名を入力してください。');
+  const o = RE.parseEventList([name, f.date.value, f.start.value, f.type.value, f.region.value, f.place.value.replace(/,/g, ' '), f.url.value].join('\t'), RE.todayStr()).items[0];
+  if (!o) return toast('追加できませんでした。');
+  o.type = f.type.value; S.myEvents = (S.myEvents || []).concat(o); save(); toast('リストに追加しました。'); openMyList();
+}
+function myListPaste() {
+  const r = RE.parseEventList(fm('#mf').paste.value, RE.todayStr());
+  if (!r.items.length) return toast(r.errors[0] || '追加する行がありません。');
+  S.myEvents = (S.myEvents || []).concat(r.items).slice(0, 500); save(); openMyList(); toast(r.items.length + '件を追加しました。' + (r.errors.length ? '読み取れない行 ' + r.errors.length + ' 件：' + r.errors[0] : ''));
+}
 /* イベント名が登録済み（カタログ／過去の自分の大会）と一致したら、開催日・スタート時刻などを入れる */
 function lookupAutofill(f, selfId) {
   const n = f.name.value, key = RE.normName(n), note = $('#autoNote');
-  const r = RE.lookupEvent(n, S.events, RE.todayStr(), selfId, EF.entries(S.settings));
-  if (!r) { lastAuto = ''; note.innerHTML = ''; return; }
+  const r = RE.lookupEvent(n, S.events, RE.todayStr(), selfId, extraEntries());
+  if (!r) {
+    lastAuto = '';
+    const q = n.trim(), cands = RE.searchEvents(n, extraEntries());
+    if (cands.length) { note.innerHTML = '<div class="card"><p class="small">候補（タップすると開催日などが入ります）</p><div class="btns">' + cands.map(c => '<button type="button" class="btn small" data-act="pickEvent" data-name="' + esc(c) + '">' + esc(c) + '</button>').join('') + '</div></div>'; return; }
+    note.innerHTML = q.length >= 3 ? '<p class="small muted">リストに見つかりません。' + (EF.isEnabled(S.settings) ? '' : '設定で「大会情報の自動取得」をオンにして更新すると、リストが増えます。') + '<a href="https://www.google.com/search?q=' + encodeURIComponent(q + ' 開催日 スタート時刻') + '" target="_blank" rel="noopener noreferrer">公式サイトを検索（外部サイト）</a>して、開催日などを入力してください。</p>' : '';
+    return;
+  }
   if (key === lastAuto) return;
   lastAuto = key;
   const x = r.fields, filled = [];
   if (x.date) { f.date.value = x.date; filled.push('開催日 ' + RE.fmtFull(x.date)); }
   if (x.startTime) { f.start.value = x.startTime; filled.push('スタート ' + x.startTime); }
   if (x.type) { f.type.value = x.type; filled.push('種目 ' + CFG.eventTypes[x.type].label); if (x.type === 'fun' && x.distanceKm) f.dist.value = x.distanceKm; }
+  if (r.url && !f.url.value.trim()) { f.url.value = r.url; filled.push('公式ページURL'); }
   if (x.place && !f.place.value.trim()) { f.place.value = x.place; filled.push('開催場所 ' + x.place); }
   note.innerHTML = '<div class="card notice-info" role="status"><p>ℹ️ 「' + esc(r.label) + '」の登録情報から入力しました。</p>' + (filled.length ? '<p class="small">' + esc(filled.join('／')) + '</p>' : '') +
     r.notes.map(t => '<p class="small">' + esc(t) + '</p>').join('') + '<p class="small"><b>開催日・スタート時刻は変更されることがあります。公式サイトで必ず確認してください。</b></p>' +
@@ -1388,7 +1523,7 @@ function eventSheet(id) {
   const isNew = !id, ev = isNew ? { id: null, name: '', date: RE.addDays(RE.todayStr(), 90), type: 'half', distanceKm: null, goalSec: null, place: '', placeGeo: null, startTime: '', shoeId: null } : S.events.find(e => e.id === id);
   if (!ev) return;
   const html = '<form id="ef" onsubmit="return false"><label>イベント名（入力すると、登録済みの大会の開催日・スタート時刻などが自動で入ります）<input name="name" list="evNames" autocomplete="off" value="' + esc(ev.name) + '" placeholder="例：神戸マラソン"></label>' +
-    '<datalist id="evNames">' + RE.suggestNames(S.events, EF.entries(S.settings)).map(n => '<option value="' + esc(n) + '"></option>').join('') + '</datalist><div id="feedRow">' + feedRowHtml() + '</div><div id="autoNote"></div>' +
+    '<datalist id="evNames">' + RE.suggestNames(S.events, extraEntries()).map(n => '<option value="' + esc(n) + '"></option>').join('') + '</datalist><div id="feedRow">' + feedRowHtml() + '</div><div id="autoNote"></div>' +
     '<label>開催日<input type="date" name="date" value="' + esc(ev.date) + '"></label>' +
     '<label>種目<select name="type">' + Object.keys(CFG.eventTypes).map(k => opt(k, CFG.eventTypes[k].label, ev.type)).join('') + '</select></label>' +
     '<label id="distBox">距離(km)<input name="dist" inputmode="decimal" value="' + (ev.type === 'fun' && ev.distanceKm ? esc(ev.distanceKm) : '') + '" placeholder="例：7.5"></label>' +
@@ -1397,6 +1532,7 @@ function eventSheet(id) {
     '<label>スタート時刻（任意）<input type="time" name="start" value="' + esc(ev.startTime) + '"></label>' +
     '<label>開催場所（地名・任意）<input name="place" value="' + esc(ev.place) + '" placeholder="例：神戸市"></label>' +
     placeBoxHtml('evplace', ev.placeGeo, null) +
+    '<label>公式ページのURL（任意）<input name="url" inputmode="url" value="' + esc(ev.url || '') + '" placeholder="https://"></label>' +
     '<label>大会で履くシューズ<select name="shoe">' + shoeOptions(ev.shoeId, true) + '</select></label>' +
     '<div class="btns"><button class="btn primary grow" data-act="saveEvent" data-id="' + (id || '') + '">保存</button>' +
     (isNew ? '' : '<button class="btn danger" data-act="deleteEvent" data-id="' + id + '">削除</button>') + '</div></form>';
@@ -1416,8 +1552,9 @@ function saveEvent(id) {
   if (type === 'fun') { km = RE.parseKm(f.dist.value); if (!km) return toast('距離(km)を入力してください。'); }
   let goal = null; if (f.goal.value.trim()) { goal = RE.parseDuration(f.goal.value); if (!goal) return toast('目標タイムの形式を確認してください（例：1:59:30）。'); }
   const geoBox = placeBoxes.evplace, ev = id ? S.events.find(e => e.id === id) : { id: uid('e'), weather: null, result: null };
+  if (f.url.value.trim() && !/^https?:\/\//i.test(f.url.value.trim())) return toast('公式ページのURLは http:// または https:// から始めてください。');
   const oldPlace = ev.place;
-  Object.assign(ev, { name, date: f.date.value, type, distanceKm: km, goalSec: goal, startTime: f.start.value || '', place: f.place.value.trim(), shoeId: f.shoe.value || null });
+  Object.assign(ev, { name, date: f.date.value, type, distanceKm: km, goalSec: goal, startTime: f.start.value || '', place: f.place.value.trim(), url: /^https?:\/\//i.test(f.url.value.trim()) ? f.url.value.trim() : '', shoeId: f.shoe.value || null });
   if (geoBox && geoBox.geo && W.isEnabled(S.settings)) { ev.placeGeo = geoBox.geo; if (!ev.place) ev.place = geoBox.geo.name; }
   else if (oldPlace !== ev.place && !geoBox.geo) ev.placeGeo = null;
   if (!id) { S.events.push(ev); S.currentEventId = ev.id; }
@@ -1963,8 +2100,8 @@ function saveResult(id) {
 
 /* ---------------- 大会情報の自動取得（オプトイン） ---------------- */
 function feedStatusText() {
-  const f = S.settings.eventFeed, u = EF.validateUrl(f.url);
-  if (!u) return '取得元のURLが未設定です（設定画面で入力してください）。';
+  const f = S.settings.eventFeed, u = EF.effectiveUrl(S.settings);
+  if (!u) return f.url ? '取得元のURLが正しくありません（https:// から始まる必要があります）。' : 'この場所では標準の取得元が使えません。設定画面で取得元のURLを入力してください。';
   const c = EF.cache();
   if (!c || c.url !== u) return '未取得です。ボタンを押したときだけ通信します。';
   return '取得済み ' + c.events.length + '件' + (c.updatedAt ? '（取得元の更新日 ' + c.updatedAt + '）' : '') + '／最終取得 ' + dtTxt(c.fetchedAt);
@@ -1974,22 +2111,23 @@ function feedRowHtml() {
   return '<div class="row-between"><span class="xs muted" data-role="feedStatus">' + esc(feedStatusText()) + '</span><button type="button" class="btn small" data-act="feedFetch">🛰 大会情報を更新</button></div>';
 }
 function refreshNames() {
-  const dl = $('#evNames'); if (dl) dl.innerHTML = RE.suggestNames(S.events, EF.entries(S.settings)).map(n => '<option value="' + esc(n) + '"></option>').join('');
+  const dl = $('#evNames'); if (dl) dl.innerHTML = RE.suggestNames(S.events, extraEntries()).map(n => '<option value="' + esc(n) + '"></option>').join('');
 }
 const FEED_SAMPLE = '{\n  "version": 1,\n  "updatedAt": "2026-10-14",\n  "events": [\n    {\n      "name": "神戸マラソン",\n      "aliases": ["Kobe Marathon"],\n      "date": "2026-11-15",\n      "startTime": "09:00",\n      "type": "full",\n      "place": "神戸市",\n      "url": "https://www.kobe-marathon.net/",\n      "note": "公式サイトで確認してください"\n    }\n  ]\n}\n// type: full / half / 10k / 5k / fun（funのときは distanceKm も指定）';
 function feedCardHtml() {
   const on = EF.isEnabled(S.settings), f = S.settings.eventFeed;
   let h = '<div class="card"><div class="switch-row"><label class="check" style="margin:0"><input type="checkbox" id="feedSwitch" data-act-change="toggleFeed"' + (on ? ' checked' : '') + '> 大会情報の自動取得</label></div>' +
-    '<p class="xs muted">オンにすると、あなたが設定した取得元（https のURL）から大会の一覧を読み込み、イベント名の入力で開催日・スタート時刻などを自動入力できます。「大会情報を更新」を押したときだけ通信し、入力した大会名は送信しません。</p>';
-  if (on) h += '<label>取得元のURL（JSON）<input id="feedUrl" inputmode="url" value="' + esc(f.url) + '" placeholder="https://raw.githubusercontent.com/…/events.json"></label>' +
-    '<div class="btns"><button class="btn small" data-act="feedSaveUrl">URLを保存</button><button class="btn small primary" data-act="feedFetch">🛰 大会情報を更新</button></div>' +
+    '<p class="xs muted">オンにすると、取得元（標準はこのアプリと同じ場所の大会リスト）から大会の一覧を読み込み、イベント名の入力で開催日・スタート時刻などを自動入力できます。「大会情報を更新」を押したときだけ通信し、入力した大会名は送信しません。</p>';
+  if (on) h += '<div class="btns"><button class="btn small primary" data-act="feedFetch">🛰 大会情報を更新</button><button class="btn danger small" data-act="clearFeed">取得した大会情報を削除</button></div>' +
     '<p class="small" data-role="feedStatus">' + esc(feedStatusText()) + '</p>' +
-    '<details><summary class="small">取得元JSONの形式を見る</summary><pre class="code">' + esc(FEED_SAMPLE) + '</pre><p class="xs muted">GitHubに置いたJSONの「raw」のURLなどが使えます。取得元は、他のサイトからの読み取り（CORS）を許可している必要があります。</p></details>' +
-    '<div class="btns"><button class="btn danger small" data-act="clearFeed">取得した大会情報を削除</button></div>';
+    '<p class="xs muted">標準では、このアプリと同じ場所にある大会リスト（events.json）を読み込みます。URLの入力は不要です。リストにない大会は、イベント名の下の「公式サイトを検索」から調べて入力できます。</p>' +
+    '<details><summary class="small">取得元を変える（上級者向け）</summary><label>取得元のURL（JSON・空欄なら標準）<input id="feedUrl" inputmode="url" value="' + esc(f.url) + '" placeholder="https://raw.githubusercontent.com/…/events.json"></label>' +
+    '<div class="btns"><button class="btn small" data-act="feedSaveUrl">URLを保存</button></div>' +
+    '<p class="small">取得元JSONの形式</p><pre class="code">' + esc(FEED_SAMPLE) + '</pre><p class="xs muted">GitHubに置いたJSONの「raw」のURLなどが使えます。他のサイトを指定する場合、取得元は他のサイトからの読み取り（CORS）を許可している必要があります。</p></details>';
   return h + '</div>';
 }
 function openFeedConsent() {
-  openSheet('大会情報の自動取得について', '<ul><li>大会情報を取得するため、あなたが設定した取得元のURL（https）にアクセスします。アクセス先には、通常のWebアクセスと同様に、IPアドレスや端末の情報が伝わります。</li><li>入力した大会名は送信しません。取得した一覧を、この端末の中で照合します。</li><li>取得元の内容や利用条件は、取得元の運営者が定めるものです。確認と利用は自己責任で行ってください。</li><li>開催日・スタート時刻などは、正確性が保証されません。必ず公式サイトで確認してください。</li><li>いつでもオフに戻せます。</li></ul>' +
+  openSheet('大会情報の自動取得について', '<ul><li>大会情報を取得するため、取得元（標準は、このアプリを配信している場所に置かれた大会リスト events.json。変更した場合はあなたが設定したURL）にアクセスします。アクセス先には、通常のWebアクセスと同様に、IPアドレスや端末の情報が伝わります。</li><li>入力した大会名は送信しません。取得した一覧を、この端末の中で照合します。</li><li>取得元の内容や利用条件は、取得元の運営者が定めるものです。確認と利用は自己責任で行ってください。</li><li>開催日・スタート時刻などは、正確性が保証されません。必ず公式サイトで確認してください。</li><li>いつでもオフに戻せます。</li></ul>' +
     '<label class="check"><input type="checkbox" id="feedConsentChk"> 上記を理解し、同意します</label><div class="btns"><button class="btn primary grow" id="feedConsentOk" data-act="feedConsentOk" disabled>同意してオンにする</button><button class="btn" data-act="feedConsentNo">キャンセル</button></div>');
 }
 async function doFeedFetch(btn) {
@@ -2001,7 +2139,7 @@ async function doFeedFetch(btn) {
     if (fm('#ef') && !lastAuto) lookupAutofill(fm('#ef'), sheetEventId);
   } catch (e) {
     const m = e && e.message;
-    setS(m === 'nourl' ? '取得元のURL（https://…）を設定画面で入力してください。' : m === 'format' ? '取得元の形式が正しくありません。' : m === 'toolarge' ? 'データが大きすぎます。' : '取得できませんでした。登録済みの大会はそのまま使えます。');
+    setS(m === 'nourl' ? '取得元のURLを確認してください（設定画面）。' : m === 'format' ? '取得元の形式が正しくありません。' : m === 'toolarge' ? 'データが大きすぎます。' : '取得できませんでした。登録済みの大会はそのまま使えます。');
   }
   btn.disabled = false;
 }
@@ -2019,7 +2157,7 @@ function viewSettings() {
   h += '<h3>データの書き出し・読み込み</h3><div class="card"><label class="check"><input type="checkbox" id="expLoc"> 位置情報・地名を含める（初期値は含めない）</label>' +
     '<div class="btns"><button class="btn" data-act="exportData">⬇ JSONを書き出す</button><button class="btn" data-act="importPick">⬆ JSONを読み込む</button></div>' +
     '<input type="file" id="importFile" accept=".json,application/json" hidden><p class="xs muted">読み込みでは設定（天気の自動取得など）は変わりません。自動取得は、読み込んだ人が自分でオンにします。</p></div>';
-  h += '<div class="card"><div class="btns"><button class="btn danger small" data-act="resetAll">すべてのデータを削除してサンプルに戻す</button></div></div>';
+  h += '<div class="card"><div class="btns"><button class="btn danger small" data-act="resetAll">すべてのデータを削除して最初の状態に戻す</button></div></div>';
   return h + '<p class="disclaimer">' + esc(TX.disclaimer) + '</p>';
 }
 function openConsent() {
@@ -2062,9 +2200,12 @@ const actions = {
   reviewOpen: el => { ui.tab = 'review'; ui.reviewId = el.dataset.id; render(); window.scrollTo(0, 0); },
   reviewBack: () => { ui.reviewId = null; render(); window.scrollTo(0, 0); },
   closeSheet,
+  openEventFinder, openMyList, myListAdd, myListPaste,
+  myListDel: el => { S.myEvents = (S.myEvents || []).filter((_, i) => i !== +el.dataset.i); save(); openMyList(); },
+  pickFound: el => { const c = finderRes[+el.dataset.i]; if (!c) return; closeSheet(); eventSheet(null); const f = fm('#ef'); f.name.value = c.name; lastAuto = ''; lookupAutofill(f, null); },
   newEvent: () => eventSheet(null), editEvent: el => eventSheet(el.dataset.id), saveEvent: el => saveEvent(el.dataset.id || null), deleteEvent: el => deleteEvent(el.dataset.id),
   openPlanGen, previewPlan, applyPlan,
-  openMenuHub, openMenuImport, menuPreview, menuApply, openMenuBuilder, openCareEdit, careSave, careSample, menuExport,
+  loadSample, openMenuHub, openMenuImport, menuPreview, menuApply, openMenuBuilder, openCareEdit, careSave, careSample, menuExport,
   menuPickFile: () => $('#menuFile').click(), menuSample: () => { const f = fm('#mf'); if (f) f.text.value = MTX.csvExample; },
   bdPrev: () => bdMove(-1), bdNext: () => bdMove(1), bdCopy, bdClear, bdSave,
   weekMove: el => { ui.weekStart = RE.addDays(ui.weekStart, +el.dataset.d); render(); }, weekToday: () => { ui.weekStart = RE.mondayOf(RE.todayStr()); render(); },
@@ -2089,11 +2230,12 @@ const actions = {
   consentOk: () => { S.settings.consent = { at: Date.now() }; S.settings.autoWeather = true; save(); closeSheet(); render(); toast('天気の自動取得をオンにしました。'); },
   consentNo: () => { closeSheet(); render(); },
   clearWx: clearWeatherData, feedFetch: el => doFeedFetch(el),
-  feedSaveUrl: () => { const u = EF.validateUrl($('#feedUrl').value); if (!u) return toast('https:// から始まるURLを入力してください。'); S.settings.eventFeed.url = u; save(); render(); toast('URLを保存しました。「大会情報を更新」を押すと取得します。'); },
-  feedConsentOk: () => { S.settings.eventFeed.consent = { at: Date.now() }; S.settings.eventFeed.enabled = true; save(); closeSheet(); render(); toast('オンにしました。取得元のURLを入力して、「大会情報を更新」を押してください。'); },
+  pickEvent: el => { const f = fm('#ef'); if (!f) return; f.name.value = el.dataset.name; lastAuto = ''; lookupAutofill(f, sheetEventId); },
+  feedSaveUrl: () => { const raw = $('#feedUrl').value.trim(); if (!raw) { S.settings.eventFeed.url = ''; save(); render(); return toast('標準の取得元に戻しました。'); } const u = EF.validateUrl(raw); if (!u) return toast('https:// から始まるURLを入力してください。'); S.settings.eventFeed.url = u; save(); render(); toast('URLを保存しました。「大会情報を更新」を押すと取得します。'); },
+  feedConsentOk: () => { S.settings.eventFeed.consent = { at: Date.now() }; S.settings.eventFeed.enabled = true; save(); closeSheet(); render(); toast('オンにしました。「大会情報を更新」を押すと、大会リストを読み込みます。'); },
   feedConsentNo: () => { closeSheet(); render(); },
   clearFeed: () => { if (confirm('取得した大会情報を削除します。よろしいですか？')) { EF.clearCache(); render(); toast('削除しました。'); } }, exportData: doExport, importPick: () => $('#importFile').click(),
-  resetAll: () => { if (confirm('すべてのデータを削除して、サンプルデータに戻します。よろしいですか？（元に戻せません）')) { W.clearCache(); EF.clearCache(); S = seed(); syncShoePacking(); save(); ui.tab = 'home'; render(); } }
+  resetAll: () => { if (confirm('すべてのデータを削除して、最初の状態（空）に戻します。よろしいですか？（元に戻せません）')) { W.clearCache(); EF.clearCache(); S = RE.sanitizeState({}); save(); ui.tab = 'home'; render(); } }
 };
 const changes = {
   switchEvent: el => { S.currentEventId = el.value; save(); render(); },

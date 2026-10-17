@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "updatedAt": "2026-10-17",
+  "events": [
+    {
+      "name": "神戸マラソン",
+      "date": "2026-11-15",
+      "startTime": "09:00",
+      "type": "full",
+      "place": "神戸市",
+      "url": "https://www.kobe-marathon.net/",
+      "note": "開催日は公式サイトの記載。スタート時刻は参考サイトの情報です。",
+      "aliases": [
+        "Kobe Marathon"
+      ],
+      "region": "兵庫県"
+    },
+    {
+      "name": "大阪マラソン",
+      "date": "2027-02-28",
+      "startTime": "09:15",
+      "type": "full",
+      "place": "大阪市",
+      "url": "https://www.osaka-marathon.com/",
+      "note": "開催日は大阪府の発表。スタート時刻は参考サイトの情報（第1ウェーブ）で、ウェーブにより異なります。",
+      "aliases": [
+        "Osaka Marathon"
+      ],
+      "region": "大阪府"
+    },
+    {
+      "name": "東京マラソン",
+      "date": "2027-03-07",
+      "startTime": "09:10",
+      "type": "full",
+      "place": "東京都",
+      "url": "https://www.marathon.tokyo/",
+      "note": "開催日は公式サイトの記載。スタート時刻は参考サイトの情報です。",
+      "aliases": [
+        "Tokyo Marathon"
+      ],
+      "region": "東京都"
+    },
+    {
+      "name": "京都マラソン",
+      "date": "2027-02-21",
+      "startTime": "09:00",
+      "type": "full",
+      "place": "京都市",
+      "url": "https://www.kyoto-marathon.com/",
+      "note": "開催日・スタート時刻は参考サイトの情報です。",
+      "aliases": [
+        "Kyoto Marathon"
+      ],
+      "region": "京都府"
+    },
+    {
+      "name": "福岡マラソン",
+      "date": "2026-11-08",
+      "startTime": "",
+      "type": "full",
+      "place": "福岡市",
+      "url": "https://www.crossroadfukuoka.jp/event/11923",
+      "note": "開催日は福岡市の発表。スタート時刻は未発表のため入力していません。",
+      "aliases": [
+        "Fukuoka Marathon"
+      ],
+      "region": "福岡県"
+    },
+    {
+      "name": "宝塚ハーフマラソン",
+      "date": "2026-12-20",
+      "startTime": "",
+      "type": "half",
+      "place": "宝塚市",
+      "url": "https://www.city.takarazuka.hyogo.jp/1060683/1060710/1061599/1021829/1002625/1056867/index.html",
+      "note": "開催日は宝塚市のページの記載。スタート時刻は未確認のため入力していません。公式サイトで確認してください。",
+      "aliases": [
+        "Takarazuka Half Marathon",
+        "宝塚ハーフ"
+      ],
+      "region": "兵庫県"
+    }
+  ]
+}
