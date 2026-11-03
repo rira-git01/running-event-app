@@ -2,7 +2,7 @@
    ・自分のサイト内のファイルだけをキャッシュする（天気・大会情報など外部への通信には一切関与しない）
    ・アプリを更新したら CACHE_VERSION を変える（古いキャッシュは自動で消える）
    ・ページはオンラインなら最新を取得し、取れないときだけ保存済みを使う */
-const CACHE_VERSION = 'running-event-app-v3';
+const CACHE_VERSION = 'running-event-app-v8';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

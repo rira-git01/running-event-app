@@ -266,6 +266,9 @@ const CONFIG = {
   pace: {
     offsets: { jog: 75, recovery: 105, lsd: 90, tempo: 0, mp: 0, interval: -22, race: 0 },
     ranges: { jog: [60, 90], lsd: [75, 105], tempo: [-5, 10], interval: [-30, -15] },
+    // 「普段のジョグペース」を入力したときは、ジョグ・LSD・リカバリーはそのペースに足す秒数で決める
+    easyOffsets: { jog: 0, lsd: 15, recovery: 30 },
+    easyRange: [180, 720], // 入力できる普段のジョグペースの範囲(秒/km)＝3:00〜12:00
     roundToSec: 5,
     riegelExponent: 1.06,
     // 目標・直近タイムが無いときの推定に使う「10kmの目安タイム(秒)」
@@ -396,7 +399,32 @@ const TEXT = {
       lowRate: '練習の消化率が計画の7割を下回っていました。次回は無理のない計画の作り直しも検討しましょう。'
     }
   },
-  hydrationAfter: { title: '走った後', lines: ['失った水分を補給する。', '汗をたくさんかいたときは、塩分（スポーツドリンク・塩タブレットなど）も意識。'] }
+  hydrationAfter: { title: '走った後', lines: ['失った水分を補給する。', '汗をたくさんかいたときは、塩分（スポーツドリンク・塩タブレットなど）も意識。'] },
+
+  /* 自分の弱点に合わせたひとこと（設定でオンにした項目だけ表示）。文章はここを書き換える */
+  weakLabels: { heat: '暑さに弱い', stomach: '胃が弱い（逆流・濃い味のジェルが苦手）', ankle: '足首を痛めやすい', dehydration: '脱水になったことがある', legfade: '後半に足が疲れる' },
+  weakAdvice: {
+    heat: {
+      train: [{ when: 'hot', text: '暑さに弱いので、気温が高い日は朝夕に走る、またはペースと距離を落とす。' }],
+      race: ['着すぎない。スタート待ちは捨てられる上着で調整し、汗をかく前に脱ぐ。', '給水所では少量ずつこまめに飲み、首筋や手首を冷やす。気温が高めなら給水の回数を増やす。']
+    },
+    stomach: {
+      train: [{ when: 'long', text: '濃い味のジェルは避け、アミノサウルスなど口当たりの軽いものを少量ずつ。水は一気に飲まず、ひと口ずつ。' }],
+      race: ['補給は一度にたくさんとらず、少量をこまめに（濃い味のジェルは使わない）。', '25km以降も水は少量ずつ。逆流が出たら、いったんペースを落として歩き、少量の水だけにする。', '逆流が繰り返す・痛みがあるときは、医師に相談する。']
+    },
+    ankle: {
+      train: [{ when: 'quality', text: '足首に違和感が出たら、当日の練習をジョグか休養に切り替える。' }],
+      race: ['給水所付近の混雑や路面の段差でひねらないよう、足元に注意。違和感が出たら無理をしない。']
+    },
+    dehydration: {
+      train: [{ when: 'long', text: '走る前後に体重を測り、汗で減る量を記録する（減った分は水分と塩分で補う）。' }],
+      race: ['前日から水分をこまめにとる。当日の朝も少しずつ。', 'ゴール後は水分と塩分を早めに補給。ふらつき・頭痛・吐き気が続くときは救護所へ。']
+    },
+    legfade: {
+      train: [{ when: 'long', text: '最後の数kmは、ストレッチで止まらずに走り切る練習をする。' }],
+      race: ['1kmごとのストレッチはやめ、補給所で歩くときにまとめて行う（止まるほどタイムが延びる）。', '前半は目標ペースより少し抑えて入り、後半に脚を残す。']
+    }
+  }
 };
 
 
@@ -497,10 +525,13 @@ function basePace(p) {
   const lv = CONFIG.pace.level10kSec[p.level] || CONFIG.pace.level10kSec.intermediate;
   return { paceSec: predictSec(lv, 10, km) / km, source: 'level' };
 }
-function paceFor(type, base) {
-  if (!(base > 0) || type === 'rest') return null;
+function paceFor(type, base, easySec) {
+  if (type === 'rest') return null;
+  const r = CONFIG.pace.roundToSec, eo = CONFIG.pace.easyOffsets[type];
+  if (easySec > 0 && eo != null) return Math.round((easySec + eo) / r) * r; // 普段のジョグペースが基準
+  if (!(base > 0)) return null;
   const off = CONFIG.pace.offsets[type]; if (off == null) return null;
-  const r = CONFIG.pace.roundToSec; return Math.round((base + off) / r) * r;
+  return Math.round((base + off) / r) * r;
 }
 
 /* ---------------------------------------------------------------
@@ -565,6 +596,8 @@ function generatePlan(p) {
   for (let i = 0; i < T; i++) { vols.push(roundHalf(lastPeak * ratios[Math.min(i, ratios.length - 1)])); phases.push('taper'); isRec.push(false); }
 
   const base = basePace({ distanceKm: p.distanceKm, goalSec: p.goalSec, recentSec: p.recentSec, recentKm: p.recentKm, level });
+  const R = CONFIG.pace.easyRange, easy = (p.easySec >= R[0] && p.easySec <= R[1]) ? p.easySec : null;
+  if (easy && base && easy < base.paceSec - 10) warnings.push('普段のジョグ（' + formatPace(easy) + '/km）が、基準ペース（' + formatPace(base.paceSec) + '/km）より速くなっています。目標タイムが控えめかもしれません。目標を見直すと、ペース走などもそれに合わせて速くなります。');
   const tpl = P.templates[D];
   const roleByWd = {}; tpl.forEach(t => { roleByWd[t.wd] = t.role; });
   const longMax = P.longRunMaxKm[bucket][level];
@@ -584,7 +617,7 @@ function generatePlan(p) {
     if (e - d === 1) { type = 'rest'; km = 0; memo = '休養・最終準備。早めに就寝。'; }
     else if (e - d === 2 && type !== 'rest') { type = 'jog'; km = 3; memo = '体をほぐす程度に軽く'; }
     else if (type !== 'rest') memo = menuMemo(type, km, phase);
-    items.push({ date, type, distanceKm: type === 'rest' ? null : km, paceSec: paceFor(type, base ? base.paceSec : null),
+    items.push({ date, type, distanceKm: type === 'rest' ? null : km, paceSec: paceFor(type, base ? base.paceSec : null, easy),
       durationSec: null, memo, phase, source: 'plan' });
   }
   items.forEach(it => { if (it.distanceKm > 0 && it.paceSec > 0) it.durationSec = Math.round(it.distanceKm * it.paceSec); });
@@ -592,7 +625,7 @@ function generatePlan(p) {
     durationSec: base ? Math.round(base.paceSec * p.distanceKm) : null, memo: '大会当日', phase: 'race', source: 'plan' });
 
   const weeks = vols.map((v, w) => ({ index: w + 1, startDate: fromDayNum(s + w * 7), phase: phases[w], recovery: !!isRec[w], volumeKm: v }));
-  return { items, warnings, weeks, basePace: base, params: { D, level, W, T, N, V0, peak: roundHalf(peak) } };
+  return { items, warnings, weeks, basePace: base, params: { D, level, W, T, N, V0, peak: roundHalf(peak), easy } };
 }
 
 /* 生成結果を既存の練習記録へ反映。手動編集した日・完了済みの日は上書きしない */
@@ -666,8 +699,25 @@ function timeAddHours(hhmm, deltaMin) {
   return pad(Math.floor(t / 60)) + ':' + pad(t % 60);
 }
 
+/* 自分の弱点に合わせたひとこと。weak は設定の { heat: true, ... }。ctx = { kind: 'race' | 'train', type, min, temp } */
+function weakAdvice(weak, ctx) {
+  const out = [], T = TEXT.weakAdvice; if (!weak) return out;
+  const QUALITY = ['tempo', 'mp', 'interval', 'strides'];
+  Object.keys(T).forEach(k => {
+    if (weak[k] !== true) return;
+    let lines = [];
+    if (ctx.kind === 'race') lines = (T[k].race || []).slice();
+    else (T[k].train || []).forEach(r => {
+      const ok = r.when === 'long' ? ctx.min > CONFIG.fuel.thresholdMin : r.when === 'quality' ? (QUALITY.includes(ctx.type) || ctx.min > CONFIG.fuel.thresholdMin) : r.when === 'hot' ? (ctx.temp != null && ctx.temp >= 20) : true;
+      if (ok) lines.push(r.text);
+    });
+    if (lines.length) out.push({ key: k, title: TEXT.weakLabels[k], lines });
+  });
+  return out;
+}
+
 /* 日ごとのひとことアドバイス（練習用） */
-function dayAdvice(w, weather) {
+function dayAdvice(w, weather, weak) {
   const cards = [], min = (w.durationSec || 0) / 60;
   if (w.type === 'rest') {
     cards.push({ kind: 'hydration', title: '水分', text: TEXT.hydrationDaily.lines[0] });
@@ -686,6 +736,7 @@ function dayAdvice(w, weather) {
     if (f.needed) cards.push({ kind: 'nutrition', title: '補給', text: '約' + f.totalMin + '分の長い練習です。' + f.items.map(i => i.atMin + '分頃').join('・') + 'にエネルギー補給（ジェルなど）を試しましょう。大会で使うものを練習で試すチャンスです。' });
     else cards.push({ kind: 'nutrition', title: '栄養', text: '走った後は炭水化物とたんぱく質を早めに。' });
   } else cards.push({ kind: 'hydration', title: '水分', text: TEXT.hydrationDaily.lines[0] });
+  weakAdvice(weak, { kind: 'train', type: w.type, min, temp }).forEach(a => cards.push({ kind: 'weak', title: '自分の弱点：' + a.title, text: a.lines.join(' ') }));
   return cards;
 }
 
@@ -849,7 +900,9 @@ function sanitizeSettings(s) {
   const fc = isObj(s.eventFeed) ? s.eventFeed : {};
   const fconsent = isObj(fc.consent) && typeof fc.consent.at === 'number' ? { at: fc.consent.at } : null;
   return { autoWeather: s.autoWeather === true && !!consent, consent, homeLocation: sanitizeGeo(s.homeLocation), defaultShoeId: str(s.defaultShoeId) || null,
-    eventFeed: { enabled: fc.enabled === true && !!fconsent, consent: fconsent, url: str(fc.url).slice(0, 500) } };
+    eventFeed: { enabled: fc.enabled === true && !!fconsent, consent: fconsent, url: str(fc.url).slice(0, 500) },
+    fadeSec: (n => (n > 0 && n <= 300 ? Math.round(n) : 0))(numOrNull(s.fadeSec)),
+    weak: Object.keys(TEXT.weakLabels).reduce((a, k) => { a[k] = isObj(s.weak) && s.weak[k] === true; return a; }, {}) };
 }
 function sanitizeState(raw) {
   const d = sanitizeData(raw), st = sanitizeSettings(isObj(raw) ? raw.settings : null);
@@ -1113,14 +1166,14 @@ function normMenuDate(s, eventDate) {
   return d;
 }
 /* 距離・ペース・時間を整える（ペースが無ければ、種類と基準ペースから自動で入れる） */
-function finishItem(it, basePaceSec) {
+function finishItem(it, basePaceSec, easySec) {
   const o = Object.assign({}, it);
   if (o.type === 'rest') { o.distanceKm = null; o.paceSec = null; o.durationSec = null; return o; }
-  if (!(o.paceSec > 0)) o.paceSec = paceFor(o.type, basePaceSec);
+  if (!(o.paceSec > 0)) o.paceSec = paceFor(o.type, basePaceSec, easySec);
   if (o.distanceKm > 0 && o.paceSec > 0) o.durationSec = Math.round(o.distanceKm * o.paceSec); else o.durationSec = null;
   return o;
 }
-function cleanItem(r, eventDate, basePaceSec) {
+function cleanItem(r, eventDate, basePaceSec, easySec) {
   const date = normMenuDate(r.date, eventDate); if (!date) return { error: '日付を読み取れません' };
   const type = menuTypeFromText(r.type); if (!type) return { error: '種類「' + str(String(r.type == null ? '' : r.type)).slice(0, 12) + '」が分かりません' };
   let km = null; const kr = String(r.km == null ? '' : r.km).trim();
@@ -1128,7 +1181,7 @@ function cleanItem(r, eventDate, basePaceSec) {
   let pace = null; const pr = String(r.pace == null ? '' : r.pace).trim();
   if (pr !== '') { pace = parsePace(pr.replace(/\/km$/i, '')); if (pace == null) return { error: 'ペース「' + pr.slice(0, 10) + '」を読み取れません' }; }
   const lim = (x, n) => str(typeof x === 'number' ? String(x) : x).trim().slice(0, n);
-  return { item: finishItem({ date, type, distanceKm: type === 'rest' ? null : km, paceSec: pace, durationSec: null, memo: lim(r.note, 200), strength: lim(r.strength, 200), phase: lim(r.phase, 20) }, basePaceSec) };
+  return { item: finishItem({ date, type, distanceKm: type === 'rest' ? null : km, paceSec: pace, durationSec: null, memo: lim(r.note, 200), strength: lim(r.strength, 200), phase: lim(r.phase, 20) }, basePaceSec, easySec) };
 }
 const WD_KEYS = { '日': 0, '月': 1, '火': 2, '水': 3, '木': 4, '金': 5, '土': 6 };
 function sanitizeMenu(m) {
@@ -1138,7 +1191,7 @@ function sanitizeMenu(m) {
   return { name: str(m.name).trim().slice(0, 60), care: { weekly, exercises } };
 }
 function parseMenu(text, opts) {
-  opts = opts || {}; const ev = opts.eventDate, base = opts.basePaceSec, errors = [], warnings = [];
+  opts = opts || {}; const ev = opts.eventDate, base = opts.basePaceSec, easy = opts.easySec, errors = [], warnings = [];
   const raw = String(text == null ? '' : text).replace(/^﻿/, '').trim();
   if (!raw) return { error: '内容が空です。' };
   let rows = [], meta = sanitizeMenu({});
@@ -1164,7 +1217,7 @@ function parseMenu(text, opts) {
   const items = [], seen = new Set(); let after = 0, dup = 0;
   rows.forEach(r => {
     if (r.bad) { errors.push({ n: r.n, msg: '行の形式が正しくありません' }); return; }
-    const c = cleanItem(r, ev, base); if (c.error) { errors.push({ n: r.n, msg: c.error }); return; }
+    const c = cleanItem(r, ev, base, easy); if (c.error) { errors.push({ n: r.n, msg: c.error }); return; }
     const it = c.item;
     if (isValidDate(ev) && it.date > ev) { after++; return; }
     if (seen.has(it.date)) { dup++; return; }
@@ -1190,14 +1243,14 @@ function menuWeeks(items) {
   });
 }
 /* 種類ごとのペースの目安（基準ペース＝大会の目標ペース） */
-function menuLegend(basePaceSec) {
-  return ['jog', 'recovery', 'lsd', 'tempo', 'mp', 'interval', 'strides'].map(t => ({ type: t, label: CONFIG.menuTypes[t], paceSec: paceFor(t, basePaceSec), hint: TEXT.menu.typeHints[t] || '' }));
+function menuLegend(basePaceSec, easySec) {
+  return ['jog', 'recovery', 'lsd', 'tempo', 'mp', 'interval', 'strides'].map(t => ({ type: t, label: CONFIG.menuTypes[t], paceSec: paceFor(t, basePaceSec, easySec), hint: TEXT.menu.typeHints[t] || '' }));
 }
 function careLine(menu, date) { const w = menu && menu.care && menu.care.weekly; return (w && w[weekdayOf(date)]) || ''; }
 /* ある週の並びを別の週へコピー（日付だけずらす。完了・実績は持ち越さない） */
-function copyWeek(items, fromMonday, toMonday, basePaceSec) {
+function copyWeek(items, fromMonday, toMonday, basePaceSec, easySec) {
   const diff = dayNum(toMonday) - dayNum(fromMonday);
-  return items.filter(x => mondayOf(x.date) === fromMonday).map(x => finishItem(Object.assign({}, x, { date: fromDayNum(dayNum(x.date) + diff), paceSec: null }), basePaceSec));
+  return items.filter(x => mondayOf(x.date) === fromMonday).map(x => finishItem(Object.assign({}, x, { date: fromDayNum(dayNum(x.date) + diff), paceSec: null }), basePaceSec, easySec));
 }
 function workoutsToItems(workouts, eventId) {
   return workouts.filter(w => w.eventId === eventId).map(w => ({ date: w.date, type: w.type, distanceKm: w.distanceKm, paceSec: w.paceSec, durationSec: w.durationSec, memo: w.memo || '', strength: w.strength || '', phase: w.phase || '' }))
@@ -1212,7 +1265,7 @@ function exportMenu(items, menu, name) {
 
 return { parseMenu, exportMenu, menuWeeks, menuLegend, careLine, copyWeek, finishItem, workoutsToItems, menuTypeFromText, isQuality, sanitizeMenu, normMenuDate, WD_JA, EventFeed, EVENT_CATALOG, PREFS, findEvents, parseEventList, searchEvents, normName, suggestNames, lookupEvent, lapAnalysis, trainingSummary, reviewInsights, pbInfo, lessonsFor, CONFIG, TEXT, pad, dayNum, fromDayNum, isValidDate, weekdayOf, todayStr, addDays, daysUntil, fmtMD, fmtFull, mondayOf,
   parseKm, parsePace, parseDuration, formatPace, formatDuration, formatKm, solveTriad, eventKm, basePace, paceFor, predictSec, bucketOf,
-  generatePlan, mergePlan, fuelPlan, hydrationPlan, wearAdvice, tempFromWeather, raceDuration, timeAddHours, dayAdvice,
+  generatePlan, mergePlan, fuelPlan, hydrationPlan, wearAdvice, tempFromWeather, raceDuration, timeAddHours, dayAdvice, weakAdvice,
   shoeTotalKm, shoeLastUsed, shoeStatus, shoeTrainingKm, raceShoeChecks, recordKm, Weather,
   sanitizeState, sanitizeData, sanitizeSettings, exportData, parseImport };
 })();
@@ -1577,6 +1630,8 @@ function openPlanGen() {
     '<label>週に走れる日数<select name="days">' + [2, 3, 4, 5, 6].map(n => opt(n, n + '日', pp.days || 3)).join('') + '</select></label>' +
     '<label>現在の週間走行距離(km)<input name="weekly" inputmode="decimal" value="' + esc(pp.weekly || '') + '" placeholder="例：15"></label>' +
     (ev.goalSec ? '' : '<p class="small muted">目標タイムが未設定です。直近のタイムか走力レベルから基準ペースを推定します。</p>') +
+    '<label>普段のジョグのペース（任意・分:秒/km）<input name="easy" inputmode="numeric" value="' + esc(pp.easy || '') + '" placeholder="例：6:15"></label>' +
+    '<p class="xs muted">楽に会話できるペースです。入れると、ジョグ・LSD・リカバリーはこのペースが基準になります（空欄なら目標ペースから計算）。</p>' +
     '<label>直近のレース・テストのタイム（任意・時:分:秒）<input name="recent" inputmode="numeric" value="' + esc(pp.recent || '') + '" placeholder="例：0:52:30"></label>' +
     '<label>そのときの距離<select name="recentKm">' + [['5', '5km'], ['10', '10km'], ['21.0975', 'ハーフ'], ['42.195', 'フル']].map(a => opt(a[0], a[1], pp.recentKm || '10')).join('') + '</select></label>' +
     '<div class="btns"><button class="btn primary grow" data-act="previewPlan">内容を確認する</button></div></form><div id="planPreview"></div>';
@@ -1588,14 +1643,17 @@ function previewPlan() {
   const D = +f.days.value, weekly = numParse(f.weekly.value);
   if (weekly == null || weekly < 0) return toast('現在の週間走行距離を入力してください（0以上の数字）。');
   let recentSec = null; if (f.recent.value.trim()) { recentSec = RE.parseDuration(f.recent.value); if (!recentSec) return toast('直近タイムの形式を確認してください。'); }
-  S.planPrefs = { start: f.start.value, level: f.level.value, days: D, weekly: f.weekly.value, recent: f.recent.value, recentKm: f.recentKm.value }; save();
-  const res = RE.generatePlan({ startDate: f.start.value, eventDate: ev.date, distanceKm: RE.eventKm(ev), goalSec: ev.goalSec, level: f.level.value, daysPerWeek: D, currentWeeklyKm: weekly, recentSec, recentKm: +f.recentKm.value });
+  let easySec = null;
+  if (f.easy.value.trim()) { easySec = RE.parsePace(f.easy.value); const R = CFG.pace.easyRange; if (!easySec || easySec < R[0] || easySec > R[1]) return toast('普段のジョグのペースは「6:15」のように、3:00〜12:00の範囲で入力してください。'); }
+  S.planPrefs = { start: f.start.value, level: f.level.value, days: D, weekly: f.weekly.value, recent: f.recent.value, recentKm: f.recentKm.value, easy: f.easy.value.trim() }; save();
+  const res = RE.generatePlan({ startDate: f.start.value, eventDate: ev.date, distanceKm: RE.eventKm(ev), goalSec: ev.goalSec, level: f.level.value, daysPerWeek: D, currentWeeklyKm: weekly, recentSec, recentKm: +f.recentKm.value, easySec });
   if (res.error) { pendingPlan = null; out.innerHTML = '<div class="card notice-danger" role="alert">⛔ ' + esc(res.error) + '</div>'; return; }
   pendingPlan = res;
   let h = '<h3>作成される計画（確認用）</h3>';
   res.warnings.forEach(w => { h += '<div class="card notice-warn" role="alert">⚠️ ' + esc(w) + '</div>'; });
   const phaseLabel = { base: 'ベース期', build: '強化期', taper: '調整期', race: '大会' };
   const bp = res.basePace; h += '<p class="small">基準ペース：' + esc(paceTxt(bp.paceSec)) + '（' + (bp.source === 'goal' ? '目標タイムから' : bp.source === 'recent' ? '直近タイムから推定' : '走力レベルから推定') + '）</p>';
+  h += '<p class="small">ペースの目安：' + ['jog', 'lsd', 'tempo', 'interval'].map(t => CFG.menuTypes[t] + ' ' + esc(paceTxt(RE.paceFor(t, bp.paceSec, res.params.easy)))).join('／') + (res.params.easy ? '（ジョグ系は普段のジョグペース基準）' : '') + '</p>';
   h += '<div class="card"><table class="pace-table"><thead><tr><th>週</th><th>開始</th><th>時期</th><th>距離</th></tr></thead><tbody>' +
     res.weeks.map(w => '<tr><td>' + w.index + '</td><td>' + esc(RE.fmtMD(w.startDate)) + '</td><td>' + phaseLabel[w.phase] + (w.recovery ? '（軽め）' : '') + '</td><td class="num">' + RE.formatKm(w.volumeKm) + 'km</td></tr>').join('') + '</tbody></table></div>';
   const first = res.items.filter(i => i.type !== 'rest').slice(0, 7);
@@ -1614,6 +1672,7 @@ function applyPlan() {
 
 /* ---------------- 練習メニュー（自動生成・取り込み・アプリ内で作成） ---------------- */
 const MTX = TX.menu;
+function evEasy() { const v = S.planPrefs && typeof S.planPrefs.easy === 'string' ? RE.parsePace(S.planPrefs.easy) : null, R = CFG.pace.easyRange; return v && v >= R[0] && v <= R[1] ? v : null; }
 function evBase(ev) { const b = RE.basePace({ distanceKm: RE.eventKm(ev), goalSec: ev.goalSec, level: 'intermediate' }); return b ? b.paceSec : null; }
 function curMenu(ev) { return (S.menus && S.menus[ev.id]) || RE.sanitizeMenu({}); }
 function downloadText(name, text, mime) {
@@ -1637,6 +1696,8 @@ function openMenuImport() {
   const ev = cur(); if (!ev) return; pendingMenu = null;
   const html = '<form id="mf" onsubmit="return false"><p class="small">大会：' + esc(ev.name) + '（' + esc(RE.fmtMD(ev.date)) + '）。この大会の練習として取り込みます。</p>' +
     '<label>メニューを貼り付け<textarea name="text" rows="8" placeholder="2026-11-02,ジョグ,6,楽に,足首ケア,導入期"></textarea></label>' +
+    '<label>普段のジョグのペース（任意・分:秒/km）<input name="easy" inputmode="numeric" value="' + esc((S.planPrefs && S.planPrefs.easy) || '') + '" placeholder="例：6:15"></label>' +
+    '<p class="xs muted">ペースを書いていない日のジョグ・LSD・リカバリーに使います。空欄なら目標ペースから計算します。ペース走・MPなどは目標ペースのままです。</p>' +
     '<input type="file" id="menuFile" accept=".json,.csv,.txt,text/*,application/json" hidden>' +
     '<div class="btns"><button type="button" class="btn" data-act="menuPickFile">📂 ファイルを選ぶ</button><button type="button" class="btn" data-act="menuSample">例を入れる</button></div>' +
     '<details class="card"><summary>書き方（クリックで開く）</summary><div class="small"><p>1行に1日、カンマまたはタブ区切り：<br><code>日付,種類,距離(km),内容,補強・ケア,時期</code></p>' +
@@ -1648,7 +1709,10 @@ function openMenuImport() {
 }
 function menuPreview() {
   const ev = cur(), f = fm('#mf'), out = $('#menuPreview'); if (!ev || !f) return;
-  const res = RE.parseMenu(f.text.value, { eventDate: ev.date, basePaceSec: evBase(ev) });
+  let easySec = null;
+  if (f.easy.value.trim()) { easySec = RE.parsePace(f.easy.value); const R = CFG.pace.easyRange; if (!easySec || easySec < R[0] || easySec > R[1]) return toast('普段のジョグのペースは「6:15」のように、3:00〜12:00の範囲で入力してください。'); }
+  S.planPrefs = Object.assign({}, S.planPrefs, { easy: f.easy.value.trim() }); save();
+  const res = RE.parseMenu(f.text.value, { eventDate: ev.date, basePaceSec: evBase(ev), easySec });
   if (res.error) { pendingMenu = null; out.innerHTML = '<div class="card notice-danger" role="alert">⛔ ' + esc(res.error) + '</div>'; return; }
   pendingMenu = res;
   let h = '<h3>取り込む内容（確認用）</h3>';
@@ -1657,6 +1721,7 @@ function menuPreview() {
   h += '<p class="small">' + res.summary.days + '日／' + res.summary.weeks + '週／合計 ' + RE.formatKm(res.summary.totalKm) + 'km（' + esc(RE.fmtMD(res.summary.from)) + ' 〜 ' + esc(RE.fmtMD(res.summary.to)) + '）</p>';
   h += '<div class="card"><table class="pace-table"><thead><tr><th>週</th><th>時期</th><th>距離</th><th>ポイント</th></tr></thead><tbody>' +
     RE.menuWeeks(res.items).map(w => '<tr><td>' + esc(RE.fmtMD(w.start)) + '</td><td>' + esc(w.phase) + (w.recovery ? ' <span class="badge">回復週</span>' : '') + '</td><td class="num">' + RE.formatKm(w.km) + 'km</td><td>' + w.days.filter(d => RE.isQuality(d.type) || d.type === 'lsd').map(d => esc(CFG.menuTypes[d.type])).join('・') + '</td></tr>').join('') + '</tbody></table></div>';
+  const bpS = evBase(ev); if (bpS) h += '<p class="small">ペースの目安（ペース未記入の日）：' + ['jog', 'lsd', 'tempo', 'interval'].map(t => CFG.menuTypes[t] + ' ' + esc(paceTxt(RE.paceFor(t, bpS, easySec)))).join('／') + '</p>';
   const m = res.meta, hasCare = Object.keys(m.care.weekly).length || m.care.exercises.length;
   if (hasCare) h += '<label class="check"><input type="checkbox" id="mcare" checked> ケア・補強の設定（曜日ごとの一言・やり方 ' + m.care.exercises.length + '件）も取り込む</label>';
   h += '<label class="check"><input type="checkbox" id="movw" checked> 自動作成・取り込み済みで未完了の日を置き換える</label><p class="xs muted">手入力・編集した日と、完了済みの日は上書きしません。外すと、予定のない日にだけ追加します。</p>';
@@ -1683,7 +1748,7 @@ function openMenuBuilder() {
   if (RE.dayNum(end) - RE.dayNum(start) > 7 * 79) start = RE.addDays(end, -7 * 79);
   const weeks = []; for (let d = start; d <= end; d = RE.addDays(d, 7)) weeks.push(d);
   let idx = weeks.indexOf(RE.mondayOf(today)); if (idx < 0) idx = 0;
-  bd = { ev, base: evBase(ev), map, locked, weeks, idx };
+  bd = { ev, base: evBase(ev), easy: evEasy(), map, locked, weeks, idx };
   const html = '<form id="bf" onsubmit="return false"><div class="weeknav"><button type="button" class="btn small" data-act="bdPrev" aria-label="前の週">◀</button><div class="label" id="bTitle"></div><button type="button" class="btn small" data-act="bdNext" aria-label="次の週">▶</button></div>' +
     '<p class="small" id="bSum"></p><div id="bWeek"></div>' +
     '<div class="btns"><button type="button" class="btn small" data-act="bdCopy">前の週をコピー</button><button type="button" class="btn small" data-act="bdClear">この週を空にする</button></div>' +
@@ -1725,7 +1790,7 @@ function syncWeek(quiet) {
     const kt = f['k' + i].value.trim(), km = kt === '' ? null : RE.parseKm(kt);
     if (kt !== '' && km == null) { ok = false; if (!quiet) toast(RE.fmtMD(d) + ' の距離の形式を確認してください。'); }
     const old = bd.map[d];
-    bd.map[d] = RE.finishItem({ date: d, type: t, distanceKm: km, paceSec: old && old.type === t ? old.paceSec : null, durationSec: null, memo: f['n' + i].value.trim().slice(0, 200), strength: f['s' + i].value.trim().slice(0, 200), phase }, bd.base);
+    bd.map[d] = RE.finishItem({ date: d, type: t, distanceKm: km, paceSec: old && old.type === t ? old.paceSec : null, durationSec: null, memo: f['n' + i].value.trim().slice(0, 200), strength: f['s' + i].value.trim().slice(0, 200), phase }, bd.base, bd.easy);
   }
   weekItems(ws).forEach(x => { x.phase = phase; });
   return ok;
@@ -1734,7 +1799,7 @@ function bdMove(d) { if (!syncWeek()) return; const n = bd.idx + d; if (n < 0 ||
 function bdCopy() {
   if (bd.idx < 1) return toast('コピーできる前の週がありません。'); if (!syncWeek()) return;
   const ws = bd.weeks[bd.idx], prev = bd.weeks[bd.idx - 1], src = Object.keys(bd.map).map(k => bd.map[k]);
-  const add = RE.copyWeek(src, prev, ws, bd.base).filter(x => x.date <= bd.ev.date && !bd.locked.has(x.date));
+  const add = RE.copyWeek(src, prev, ws, bd.base, bd.easy).filter(x => x.date <= bd.ev.date && !bd.locked.has(x.date));
   if (!add.length) return toast('前の週に、コピーできる練習がありません。');
   weekItems(ws).forEach(x => { if (!bd.locked.has(x.date)) delete bd.map[x.date]; });
   add.forEach(x => { bd.map[x.date] = x; }); renderBWeek(); toast('前の週の内容をコピーしました。');
@@ -1777,10 +1842,10 @@ function menuExport() {
 }
 function trainFooter(ev) {
   const base = evBase(ev), m = curMenu(ev); let h = '';
-  const lg = RE.menuLegend(base);
+  const lg = RE.menuLegend(base, evEasy());
   h += '<details class="card"><summary>ペースの目安・メニューの種類</summary><table class="pace-table"><thead><tr><th>種類</th><th>ペース</th><th>ひとこと</th></tr></thead><tbody>' +
     lg.map(x => '<tr><td>' + esc(x.label) + '</td><td class="num">' + (x.paceSec ? esc(paceTxt(x.paceSec)) : '—') + '</td><td class="small">' + esc(x.hint) + '</td></tr>').join('') + '</tbody></table>' +
-    '<p class="xs muted">基準は大会の' + (ev.goalSec ? '目標ペース' : '推定ペース（目標タイム未設定）') + '。MPは大会ペースです。</p></details>';
+    '<p class="xs muted">基準は大会の' + (ev.goalSec ? '目標ペース' : '推定ペース（目標タイム未設定）') + '。MPは大会ペースです。' + (evEasy() ? 'ジョグ・LSD・リカバリーは、普段のジョグペース（' + esc(paceTxt(evEasy())) + '）が基準です。' : '') + '</p></details>';
   if (m.care.exercises.length) h += '<details class="card"><summary>ケア・補強のやり方</summary>' + m.care.exercises.map(x => '<div class="care-ex"><b>' + esc(x.name) + '</b>' + (x.detail ? '　<span class="muted">' + esc(x.detail) + '</span>' : '') + (x.how ? '<p class="small">' + esc(x.how) + '</p>' : '') + '</div>').join('') + '<p class="xs muted">' + esc(MTX.careDisclaimer) + '</p></details>';
   return h;
 }
@@ -1801,6 +1866,9 @@ function workoutCard(w) {
   if (!rest) h += '<div class="btns"><button type="button" class="btn small' + (w.done ? '' : ' primary') + '" data-act="toggleDone" data-id="' + w.id + '">' + (w.done ? '完了を外す' : '✓ 完了にする') + '</button></div>';
   return h + '</div>';
 }
+function weekNavHtml(ws, we) {
+  return '<div class="weeknav"><button class="btn small" data-act="weekMove" data-d="-7" aria-label="前の週">◀</button><div class="label">' + esc(RE.fmtMD(ws)) + ' 〜 ' + esc(RE.fmtMD(we)) + '<br><button class="btn small ghost" data-act="weekToday">今週へ</button></div><button class="btn small" data-act="weekMove" data-d="7" aria-label="次の週">▶</button></div>';
+}
 function viewTrain() {
   const ev = cur(); let h = '<div class="topbar"><h1>📅 練習</h1><span class="btns"><button class="btn small" data-act="openMenuHub">📋 メニュー</button><button class="btn small" data-act="addW" data-date="' + RE.todayStr() + '">＋ 追加</button></span></div>';
   if (!ev) return h + '<div class="card center"><p>まず大会を登録してください。</p><button class="btn primary" data-act="newEvent">大会を登録する</button></div>';
@@ -1808,7 +1876,7 @@ function viewTrain() {
   const nonRace = list.filter(w => w.type !== 'race' && w.type !== 'rest');
   const planned = nonRace.reduce((a, w) => a + (w.distanceKm || 0), 0), done = nonRace.filter(w => w.done).reduce((a, w) => a + RE.recordKm(w), 0);
   const pct = planned > 0 ? Math.round(done / planned * 100) : 0;
-  h += '<div class="weeknav"><button class="btn small" data-act="weekMove" data-d="-7" aria-label="前の週">◀</button><div class="label">' + esc(RE.fmtMD(ws)) + ' 〜 ' + esc(RE.fmtMD(we)) + '<br><button class="btn small ghost" data-act="weekToday">今週へ</button></div><button class="btn small" data-act="weekMove" data-d="7" aria-label="次の週">▶</button></div>';
+  h += weekNavHtml(ws, we);
   const wkInfo = RE.menuWeeks(RE.workoutsToItems(S.workouts, ev.id)).find(x => x.start === ws);
   if (wkInfo && (wkInfo.phase || wkInfo.recovery)) h += '<p class="small">' + (wkInfo.phase ? '<span class="badge">' + esc(wkInfo.phase) + '</span> ' : '') + (wkInfo.recovery ? '<span class="badge">回復週</span>' : '') + '</p>';
   h += '<div class="card"><div class="row-between"><span>今週の計画 <b>' + RE.formatKm(planned) + 'km</b></span><span>実績 <b>' + RE.formatKm(done) + 'km</b></span><span>達成率 <b>' + pct + '%</b></span></div>' +
@@ -1820,7 +1888,7 @@ function viewTrain() {
     const care = RE.careLine(S.menus[ev.id], d); if (care && !ds.some(w => w.strength)) h += '<div class="care-line">🦶 ' + esc(care) + '</div>';
     h += ds.length ? ds.map(workoutCard).join('') : '<div class="empty-day">予定なし</div>';
   }
-  return h + trainFooter(ev) + '<p class="disclaimer">' + esc(TX.planDisclaimer) + '</p>';
+  return h + weekNavHtml(ws, we) + trainFooter(ev) + '<p class="disclaimer">' + esc(TX.planDisclaimer) + '</p>';
 }
 function openWorkout(id, presetDate) {
   const isNew = !id, ev = cur();
@@ -1856,10 +1924,10 @@ function openWorkout(id, presetDate) {
     const ak = RE.parseKm(f.akm.value) || RE.parseKm(f.km.value), ad = RE.parseDuration(f.adur.value);
     $('#apace').textContent = (ak && ad) ? '実績ペース：' + paceTxt(ad / ak) : '';
     const dur = RE.parseDuration(f.dur.value), pace = RE.parsePace(f.pace.value), wx = readWx(f);
-    $('#advBox').innerHTML = RE.dayAdvice({ type: f.type.value, durationSec: dur, paceSec: pace }, wx).map(adviceCard).join('') + '<p class="disclaimer">' + esc(TX.disclaimer) + '</p>';
+    $('#advBox').innerHTML = RE.dayAdvice({ type: f.type.value, durationSec: dur, paceSec: pace }, wx, S.settings.weak).map(adviceCard).join('') + '<p class="disclaimer">' + esc(TX.disclaimer) + '</p>';
   });
 }
-const ICON = { wear: '👕', hydration: '💧', nutrition: '🍙' };
+const ICON = { wear: '👕', hydration: '💧', nutrition: '🍙', weak: '⭐' };
 const adviceCard = c => '<div class="card advice"><h4>' + (ICON[c.kind] || '') + ' ' + esc(c.title) + '</h4><p>' + esc(c.text) + '</p></div>';
 function saveW(id) {
   const f = fm('#wf'); if (!RE.isValidDate(f.date.value)) return toast('日付を入力してください。');
@@ -1885,13 +1953,15 @@ function paceTableHtml(ev, info) {
   const marks = []; info.f.items.forEach(i => { if (i.km) marks.push({ km: i.km, kind: 'fuel', text: 'ここで補給（約' + i.atMin + '分）' }); });
   info.h.times.forEach(t => marks.push({ km: Math.round(t * 60 / p * 10) / 10, kind: 'water', text: 'ここで給水（約' + t + '分）' }));
   const rows = []; for (let x = 5; x < km; x += 5) rows.push(x); rows.push(km);
-  let prev = 0, h = '<table class="pace-table"><thead><tr><th>地点</th><th>通過予想</th><th>補給・給水の目安</th></tr></thead><tbody>';
+  const fade = S.settings.fadeSec > 0 ? S.settings.fadeSec : 0, fs = km - 5; // 最後の5kmだけ fade 秒/km 遅くなる想定
+  const cum = x => fade && x > fs ? fs * p + (x - fs) * (p + fade) : x * p;
+  let prev = 0, h = '<table class="pace-table"><thead><tr><th>地点</th><th>通過予想</th>' + (fade ? '<th>失速込み</th>' : '') + '<th>補給・給水の目安</th></tr></thead><tbody>';
   rows.forEach(x => {
     const ms = marks.filter(m => m.km > prev && m.km <= x + 1e-9).sort((a, b) => a.km - b.km);
-    h += '<tr><td class="num">' + (x === km && km % 5 !== 0 ? RE.formatKm(x) + 'km（ゴール）' : RE.formatKm(x) + 'km') + '</td><td class="num">' + esc(RE.formatDuration(x * p)) + '</td><td>' +
+    h += '<tr><td class="num">' + (x === km && km % 5 !== 0 ? RE.formatKm(x) + 'km（ゴール）' : RE.formatKm(x) + 'km') + '</td><td class="num">' + esc(RE.formatDuration(x * p)) + '</td>' + (fade ? '<td class="num">' + esc(RE.formatDuration(cum(x))) + '</td>' : '') + '<td>' +
       ms.map(m => '<span class="mark ' + m.kind + '">' + (m.kind === 'fuel' ? '🍌 ' : '💧 ') + esc(m.text) + '（' + m.km + 'km付近）</span>').join('') + '</td></tr>'; prev = x;
   });
-  return h + '</tbody></table><p class="xs muted">一定のペースで走った場合の想定です。' + (info.rd.estimated ? '' : '') + '</p>';
+  return h + '</tbody></table><p class="xs muted">一定のペースで走った場合の想定です。' + (fade ? '「失速込み」は、最後の5kmが' + RE.formatPace(p + fade) + 'に落ちる想定です（ゴール予想 ' + esc(RE.formatDuration(cum(km))) + '）。' : '') + '</p>';
 }
 function addTL(ev, time, title) {
   if (S.dayItems.some(d => d.eventId === ev.id && d.time === time && d.title === title)) return false;
@@ -1917,6 +1987,9 @@ function viewDay() {
   h += '<h3>栄養・水分・ウエアのアドバイス</h3><div class="card banner" role="note">⚠️ ' + esc(TX.tryRule) + '</div>';
   const km = RE.eventKm(ev);
   if (info && info.rd.estimated) h += '<p class="small muted">目標タイムが未設定のため、中級者の目安タイムで計算しています。</p>';
+  h += '<h4>⭐ 自分の弱点への対策</h4>';
+  const wk = RE.weakAdvice(S.settings.weak, { kind: 'race' });
+  h += wk.length ? wk.map(a => adviceBlock({ title: a.title, lines: a.lines })).join('') : '<div class="card"><p class="small muted">設定で「自分の弱点」を選ぶと、ここに対策が出ます。</p></div>';
   h += '<h4>🍙 栄養</h4>';
   if (km >= CFG.fuel.carbLoadMinKm) h += adviceBlock(TX.carbLoad);
   const bt = ev.startTime ? RE.timeAddHours(ev.startTime, -CFG.fuel.breakfastBeforeStartH * 60) : null;
@@ -2153,7 +2226,10 @@ function viewSettings() {
   if (on) h += '<h4>よく走る場所（練習日の天気に使用）</h4>' + placeBoxHtml('home', st.homeLocation, g => { S.settings.homeLocation = g; save(); }) +
     '<div class="btns"><button class="btn danger small" data-act="clearWx">保存した取得結果・位置情報を削除</button></div>';
   else if (st.homeLocation) h += '<div class="btns"><button class="btn danger small" data-act="clearWx">保存した取得結果・位置情報を削除</button></div>';
-  h += '</div>' + feedCardHtml() + '<div class="card"><label>標準のシューズ（新しい記録に最初から選ばれます）<select data-act-change="defShoe">' + shoeOptions(st.defaultShoeId, true) + '</select></label></div>';
+  h += '</div>' + feedCardHtml() + '<h3>自分の弱点（アドバイスに反映）</h3><div class="card">' + Object.keys(TX.weakLabels).map(k => '<label class="check"><input type="checkbox" data-act-change="toggleWeak" data-weak="' + k + '"' + (st.weak && st.weak[k] ? ' checked' : '') + '> ' + esc(TX.weakLabels[k]) + '</label>').join('') +
+    '<p class="xs muted">チェックした項目に合わせた対策が、練習の詳細と当日の画面に出ます。一般的な目安であり、医療的な助言ではありません。この設定は書き出すJSONには含まれません。</p>' +
+    '<label>ラスト5kmで遅くなる幅（秒/km。0で無効）<input type="number" inputmode="numeric" min="0" max="300" step="5" value="' + (st.fadeSec || 0) + '" data-act-change="setFade"></label>' +
+    '<p class="xs muted">例：目標ペース6:20で、ラスト5kmが7:30になるなら70。当日のペース表に「失速込み」の列が出ます。</p></div><div class="card"><label>標準のシューズ（新しい記録に最初から選ばれます）<select data-act-change="defShoe">' + shoeOptions(st.defaultShoeId, true) + '</select></label></div>';
   h += '<h3>データの書き出し・読み込み</h3><div class="card"><label class="check"><input type="checkbox" id="expLoc"> 位置情報・地名を含める（初期値は含めない）</label>' +
     '<div class="btns"><button class="btn" data-act="exportData">⬇ JSONを書き出す</button><button class="btn" data-act="importPick">⬆ JSONを読み込む</button></div>' +
     '<input type="file" id="importFile" accept=".json,application/json" hidden><p class="xs muted">読み込みでは設定（天気の自動取得など）は変わりません。自動取得は、読み込んだ人が自分でオンにします。</p></div>';
@@ -2175,7 +2251,7 @@ function doImport(file) {
   rd.onload = () => {
     const r = RE.parseImport(String(rd.result)); if (r.error) return toast(r.error);
     if (!confirm('大会' + r.counts.events + '件・練習' + r.counts.workouts + '件・シューズ' + r.counts.shoes + '足を読み込みます。現在のデータは置き換わります（設定は変わりません）。よろしいですか？')) return;
-    Object.assign(S, r.data); const s = S.settings; if (s.defaultShoeId && !S.shoes.some(x => x.id === s.defaultShoeId)) s.defaultShoeId = null;
+    const keepWeak = S.settings.weak, keepFade = S.settings.fadeSec; Object.assign(S, r.data); S.settings.weak = keepWeak || S.settings.weak; S.settings.fadeSec = keepFade || 0; const s = S.settings; if (s.defaultShoeId && !S.shoes.some(x => x.id === s.defaultShoeId)) s.defaultShoeId = null;
     syncShoePacking(); save(); render(); toast('読み込みました。');
   };
   rd.readAsText(file);
@@ -2208,7 +2284,7 @@ const actions = {
   loadSample, openMenuHub, openMenuImport, menuPreview, menuApply, openMenuBuilder, openCareEdit, careSave, careSample, menuExport,
   menuPickFile: () => $('#menuFile').click(), menuSample: () => { const f = fm('#mf'); if (f) f.text.value = MTX.csvExample; },
   bdPrev: () => bdMove(-1), bdNext: () => bdMove(1), bdCopy, bdClear, bdSave,
-  weekMove: el => { ui.weekStart = RE.addDays(ui.weekStart, +el.dataset.d); render(); }, weekToday: () => { ui.weekStart = RE.mondayOf(RE.todayStr()); render(); },
+  weekMove: el => { ui.weekStart = RE.addDays(ui.weekStart, +el.dataset.d); render(); window.scrollTo(0, 0); }, weekToday: () => { ui.weekStart = RE.mondayOf(RE.todayStr()); render(); window.scrollTo(0, 0); },
   addW: el => openWorkout(null, el.dataset.date), editW: el => openWorkout(el.dataset.id), saveW: el => saveW(el.dataset.id || null),
   deleteW: el => { if (confirm('この練習の記録を削除します。よろしいですか？')) { S.workouts = S.workouts.filter(w => w.id !== el.dataset.id); save(); closeSheet(); render(); } },
   toggleDone: (el, e) => { e.stopPropagation(); const w = S.workouts.find(x => x.id === el.dataset.id); if (w) { w.done = !w.done; save(); render(); } },
@@ -2239,6 +2315,8 @@ const actions = {
 };
 const changes = {
   switchEvent: el => { S.currentEventId = el.value; save(); render(); },
+  setFade: el => { const n = Math.round(+el.value); S.settings.fadeSec = n > 0 && n <= 300 ? n : 0; el.value = S.settings.fadeSec; save(); toast('保存しました。'); },
+  toggleWeak: el => { S.settings.weak = Object.assign({}, S.settings.weak, { [el.dataset.weak]: el.checked }); save(); toast('保存しました。'); },
   defShoe: el => { S.settings.defaultShoeId = el.value || null; save(); toast('標準のシューズを設定しました。'); },
   toggleFeed: el => {
     if (el.checked) { el.checked = false; openFeedConsent(); return; }
